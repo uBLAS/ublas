@@ -2186,6 +2186,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_reverse_iterator1 rend () const {
                 return const_reverse_iterator1 (begin ());
             }
+#endif
 
             // Indices
             BOOST_UBLAS_INLINE
@@ -2215,7 +2216,6 @@ namespace boost { namespace numeric { namespace ublas {
         };
 
         typedef const_iterator2 iterator2;
-#endif
 
         BOOST_UBLAS_INLINE
         const_iterator2 begin2 () const {
