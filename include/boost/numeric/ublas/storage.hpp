@@ -1471,14 +1471,16 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         index_pair(V& v, size_type i) :
             container_reference<V>(v), i_(i),
-            v1_(v.data1_[i]), v2_(v.data2_[i]), dirty_(false) {}
-        BOOST_UBLAS_INLINE
+            v1_(v.data1_[i]), v2_(v.data2_[i]),
+            dirty_(false), is_copy_(false) {}
+         BOOST_UBLAS_INLINE
         index_pair(const self_type& rhs) :
-            container_reference<V>(rhs()), i_(rhs.i_),
-            v1_(rhs.v1_), v2_(rhs.v2_), dirty_(false) {}
-        BOOST_UBLAS_INLINE
+            container_reference<V>(rhs()), i_(0),
+            v1_(rhs.v1_), v2_(rhs.v2_),
+            dirty_(false), is_copy_(true) {}
+         BOOST_UBLAS_INLINE
         ~index_pair() {
-            if (dirty_) {
+            if (dirty_ && (!is_copy_) ) {
                 (*this)().data1_[i_] = v1_;
                 (*this)().data2_[i_] = v2_;
             }
@@ -1528,7 +1530,8 @@ namespace boost { namespace numeric { namespace ublas {
         typename V::value1_type v1_;
         typename V::value2_type v2_;
         bool dirty_;
-    };
+        bool is_copy_;
+     };
 
     template <class V1, class V2>
     class index_pair_array:
@@ -1625,14 +1628,16 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         index_triple(M& m, size_type i) :
             container_reference<M>(m), i_(i),
-            v1_(m.data1_[i]), v2_(m.data2_[i]), v3_(m.data3_[i]), dirty_(false) {}
+            v1_(m.data1_[i]), v2_(m.data2_[i]), v3_(m.data3_[i]),
+            dirty_(false), is_copy_(false) {}
         BOOST_UBLAS_INLINE
         index_triple(const self_type& rhs) :
-            container_reference<M>(rhs()), i_(rhs.i_),
-            v1_(rhs.v1_), v2_(rhs.v2_), v3_(rhs.v3_), dirty_(false) {}
+            container_reference<M>(rhs()), i_(0),
+            v1_(rhs.v1_), v2_(rhs.v2_), v3_(rhs.v3_),
+            dirty_(false), is_copy_(true) {}
         BOOST_UBLAS_INLINE
         ~index_triple() {
-            if (dirty_) {
+            if (dirty_ && (!is_copy_) ) {
                 (*this)().data1_[i_] = v1_;
                 (*this)().data2_[i_] = v2_;
                 (*this)().data3_[i_] = v3_;
@@ -1687,6 +1692,7 @@ namespace boost { namespace numeric { namespace ublas {
         typename M::value2_type v2_;
         typename M::value3_type v3_;
         bool dirty_;
+        bool is_copy_;
     };
 
     template <class V1, class V2, class V3>
