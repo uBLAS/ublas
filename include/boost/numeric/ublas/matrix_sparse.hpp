@@ -17,10 +17,9 @@
 #ifndef BOOST_UBLAS_MATRIX_SPARSE_H
 #define BOOST_UBLAS_MATRIX_SPARSE_H
 
-#include <boost/numeric/ublas/config.hpp>
-#include <boost/numeric/ublas/storage_sparse.hpp>
 #include <boost/numeric/ublas/vector_sparse.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/matrix_expression.hpp>
+#include <boost/numeric/ublas/detail/matrix_assign.hpp>
 
 // Iterators based on ideas of Jeremy Siek
 
@@ -132,12 +131,10 @@ namespace boost { namespace numeric { namespace ublas {
                 std::swap (d_, p.d_);
             }
         }
-#ifndef BOOST_UBLAS_NO_MEMBER_FRIENDS
         BOOST_UBLAS_INLINE
         friend void swap (sparse_matrix_element p1, sparse_matrix_element p2) {
             p1.swap (p2);
         }
-#endif
 
     private:
         size_type i_;
@@ -156,8 +153,8 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename type_traits<element_type>::real_type real_type;
         typedef typename type_traits<element_type>::precision_type precision_type;
 
-        BOOST_STATIC_CONSTANT (unsigned, plus_complexity = type_traits<element_type>::plus_complexity);
-        BOOST_STATIC_CONSTANT (unsigned, multiplies_complexity = type_traits<element_type>::multiplies_complexity);
+        static const unsigned plus_complexity = type_traits<element_type>::plus_complexity;
+        static const unsigned multiplies_complexity = type_traits<element_type>::multiplies_complexity;
 
         static
         BOOST_UBLAS_INLINE
@@ -226,13 +223,18 @@ namespace boost { namespace numeric { namespace ublas {
 #endif
 
 
-    // Array based sparse matrix class
-    template<class T, class F, class A>
+    // Index map based sparse matrix class
+    template<class T, class L, class A>
     class sparse_matrix:
-        public matrix_expression<sparse_matrix<T, F, A> > {
+        public matrix_expression<sparse_matrix<T, L, A> > {
+
+        typedef T &true_reference;
+        typedef T *pointer;
+        typedef L layout_type;
+        typedef sparse_matrix<T, L, A> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
-        BOOST_UBLAS_USING matrix_expression<sparse_matrix<T, F, A> >::operator ();
+        using matrix_expression<self_type>::operator ();
 #endif
         typedef typename A::size_type size_type;
         typedef typename A::difference_type difference_type;
@@ -240,26 +242,16 @@ namespace boost { namespace numeric { namespace ublas {
         typedef A array_type;
         typedef const T &const_reference;
 #ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
-        typedef BOOST_UBLAS_TYPENAME detail::map_traits<A, T>::reference reference;
+        typedef typename detail::map_traits<A, T>::reference reference;
 #else
-        typedef sparse_matrix_element<sparse_matrix<T, F, A> > reference;
+        typedef sparse_matrix_element<self_type> reference;
 #endif
-    private:
-        typedef T &true_reference;
-        typedef T *pointer;
-        typedef F functor_type;
-        typedef sparse_matrix<T, F, A> self_type;
-    public:
-#ifndef BOOST_UBLAS_CT_REFERENCE_BASE_TYPEDEFS
-        typedef const matrix_const_reference<const self_type> const_closure_type;
-#else
         typedef const matrix_reference<const self_type> const_closure_type;
-#endif
         typedef matrix_reference<self_type> closure_type;
         typedef sparse_vector<T, A> vector_temporary_type;
         typedef self_type matrix_temporary_type;
         typedef sparse_tag storage_category;
-        typedef typename F::orientation_category orientation_category;
+        typedef typename L::orientation_category orientation_category;
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
@@ -282,7 +274,7 @@ namespace boost { namespace numeric { namespace ublas {
             matrix_expression<self_type> (),
             size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), data_ () {
             detail::map_reserve (data (), max_nz (non_zeros));
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
         }
 
         // Accessors
@@ -339,9 +331,11 @@ namespace boost { namespace numeric { namespace ublas {
 #ifdef BOOST_UBLAS_STRICT_MATRIX_SPARSE
         BOOST_UBLAS_INLINE
         pointer find_element (size_type i, size_type j) {
-            iterator_type it (data ().find (functor_type::element (i, size1_, j, size2_)));
-            if (it == data ().end () || (*it).first != functor_type::element (i, size1_, j, size2_))
+            const size_type element = layout_type::element (i, size1_, j, size2_);
+            subiterator_type it (data ().find (element));
+            if (it == data ().end ())
                 return 0;
+            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // Broken map
             return &(*it).second;
         }
 #endif
@@ -349,14 +343,16 @@ namespace boost { namespace numeric { namespace ublas {
         // Element access
         BOOST_UBLAS_INLINE
         const_reference at_element (size_type i, size_type j) const {
-            const_iterator_type it (data ().find (functor_type::element (i, size1_, j, size2_)));
-            if (it == data ().end () || (*it).first != functor_type::element (i, size1_, j, size2_))
+            const size_type element = layout_type::element (i, size1_, j, size2_);
+            const_subiterator_type it (data ().find (element));
+            if (it == data ().end ())
                 return zero_;
+            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // Broken map
             return (*it).second;
         }
         BOOST_UBLAS_INLINE
         true_reference at_element (size_type i, size_type j) {
-            return data () [functor_type::element (i, size1_, j, size2_)];
+            return data () [layout_type::element (i, size1_, j, size2_)];
         }
         BOOST_UBLAS_INLINE
         const_reference operator () (size_type i, size_type j) const {
@@ -395,7 +391,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         sparse_matrix &assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -407,7 +403,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         sparse_matrix &plus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_plus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_plus_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -419,19 +415,19 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         sparse_matrix &minus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_minus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_minus_assign> (*this, ae);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         sparse_matrix& operator *= (const AT &at) {
-            matrix_assign_scalar (scalar_multiplies_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_multiplies_assign> (*this, at);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         sparse_matrix& operator /= (const AT &at) {
-            matrix_assign_scalar (scalar_divides_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_divides_assign> (*this, at);
             return *this;
         }
 
@@ -444,23 +440,22 @@ namespace boost { namespace numeric { namespace ublas {
                 data ().swap (m.data ());
             }
         }
-#ifndef BOOST_UBLAS_NO_MEMBER_FRIENDS
         BOOST_UBLAS_INLINE
         friend void swap (sparse_matrix &m1, sparse_matrix &m2) {
             m1.swap (m2);
         }
-#endif
 
         // Element insertion and erasure
         BOOST_UBLAS_INLINE
         void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (data ().find (functor_type::element (i, size1_, j, size2_)) == data ().end (), bad_index ());
-            data ().insert (data ().end (), BOOST_UBLAS_TYPENAME array_type::value_type (functor_type::element (i, size1_, j, size2_), t));
+            const size_type element = layout_type::element (i, size1_, j, size2_);
+            BOOST_UBLAS_CHECK (data ().find (element) == data ().end (), bad_index ());
+            data ().insert (data ().end (), typename array_type::value_type (element, t));
         }
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
-            // FIXME: shouldn't we use const_iterator_type here?
-            iterator_type it = data ().find (functor_type::element (i, size1_, j, size2_));
+            // FIXME: shouldn't we use const_subiterator_type here?
+            subiterator_type it = data ().find (layout_type::element (i, size1_, j, size2_));
             if (it == data ().end ())
                 return;
             data ().erase (it);
@@ -473,37 +468,29 @@ namespace boost { namespace numeric { namespace ublas {
         // Iterator types
     private:
         // Use storage iterator
-        typedef typename A::const_iterator const_iterator_type;
-        typedef typename A::iterator iterator_type;
+        typedef typename A::const_iterator const_subiterator_type;
+        typedef typename A::iterator subiterator_type;
 
     public:
         class const_iterator1;
         class iterator1;
         class const_iterator2;
         class iterator2;
-#ifdef BOOST_MSVC_STD_ITERATOR
-        typedef reverse_iterator_base1<const_iterator1, value_type, const_reference> const_reverse_iterator1;
-        typedef reverse_iterator_base1<iterator1, value_type, reference> reverse_iterator1;
-        typedef reverse_iterator_base2<const_iterator2, value_type, const_reference> const_reverse_iterator2;
-        typedef reverse_iterator_base2<iterator2, value_type, reference> reverse_iterator2;
-#else
         typedef reverse_iterator_base1<const_iterator1> const_reverse_iterator1;
         typedef reverse_iterator_base1<iterator1> reverse_iterator1;
         typedef reverse_iterator_base2<const_iterator2> const_reverse_iterator2;
         typedef reverse_iterator_base2<iterator2> reverse_iterator2;
-#endif
 
         // Element lookup
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) const {
-            const_iterator_type it (data ().lower_bound (functor_type::address (i, size1_, j, size2_)));
-            const_iterator_type it_end (data ().end ());
+            const_subiterator_type it (data ().lower_bound (layout_type::address (i, size1_, j, size2_)));
+            const_subiterator_type it_end (data ().end ());
             size_type index1 = size_type (-1);
             size_type index2 = size_type (-1);
             while (rank == 1 && it != it_end) {
-                index1 = functor_type::index1 ((*it).first, size1_, size2_);
-                index2 = functor_type::index2 ((*it).first, size1_, size2_);
+                index1 = layout_type::index1 ((*it).first, size1_, size2_);
+                index2 = layout_type::index2 ((*it).first, size1_, size2_);
                 if (direction > 0) {
                     if ((index1 >= i && index2 == j) || (i >= size1_))
                         break;
@@ -513,7 +500,7 @@ namespace boost { namespace numeric { namespace ublas {
                         break;
                     -- i;
                 }
-                it = data ().lower_bound (functor_type::address (i, size1_, j, size2_));
+                it = data ().lower_bound (layout_type::address (i, size1_, j, size2_));
             }
             if (rank == 1 && index2 != j) {
                 if (direction > 0)
@@ -524,16 +511,15 @@ namespace boost { namespace numeric { namespace ublas {
             }
             return const_iterator1 (*this, rank, i, j, it);
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) {
-            iterator_type it (data ().lower_bound (functor_type::address (i, size1_, j, size2_)));
-            iterator_type it_end (data ().end ());
+            subiterator_type it (data ().lower_bound (layout_type::address (i, size1_, j, size2_)));
+            subiterator_type it_end (data ().end ());
             size_type index1 = size_type (-1);
             size_type index2 = size_type (-1);
             while (rank == 1 && it != it_end) {
-                index1 = functor_type::index1 ((*it).first, size1_, size2_);
-                index2 = functor_type::index2 ((*it).first, size1_, size2_);
+                index1 = layout_type::index1 ((*it).first, size1_, size2_);
+                index2 = layout_type::index2 ((*it).first, size1_, size2_);
                 if (direction > 0) {
                     if ((index1 >= i && index2 == j) || (i >= size1_))
                         break;
@@ -543,7 +529,7 @@ namespace boost { namespace numeric { namespace ublas {
                         break;
                     -- i;
                 }
-                it = data ().lower_bound (functor_type::address (i, size1_, j, size2_));
+                it = data ().lower_bound (layout_type::address (i, size1_, j, size2_));
             }
             if (rank == 1 && index2 != j) {
                 if (direction > 0)
@@ -554,16 +540,15 @@ namespace boost { namespace numeric { namespace ublas {
             }
             return iterator1 (*this, rank, i, j, it);
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) const {
-            const_iterator_type it (data ().lower_bound (functor_type::address (i, size1_, j, size2_)));
-            const_iterator_type it_end (data ().end ());
+            const_subiterator_type it (data ().lower_bound (layout_type::address (i, size1_, j, size2_)));
+            const_subiterator_type it_end (data ().end ());
             size_type index1 = size_type (-1);
             size_type index2 = size_type (-1);
             while (rank == 1 && it != it_end) {
-                index1 = functor_type::index1 ((*it).first, size1_, size2_);
-                index2 = functor_type::index2 ((*it).first, size1_, size2_);
+                index1 = layout_type::index1 ((*it).first, size1_, size2_);
+                index2 = layout_type::index2 ((*it).first, size1_, size2_);
                 if (direction > 0) {
                     if ((index2 >= j && index1 == i) || (j >= size2_))
                         break;
@@ -573,7 +558,7 @@ namespace boost { namespace numeric { namespace ublas {
                         break;
                     -- j;
                 }
-                it = data ().lower_bound (functor_type::address (i, size1_, j, size2_));
+                it = data ().lower_bound (layout_type::address (i, size1_, j, size2_));
             }
             if (rank == 1 && index1 != i) {
                 if (direction > 0)
@@ -584,16 +569,15 @@ namespace boost { namespace numeric { namespace ublas {
             }
             return const_iterator2 (*this, rank, i, j, it);
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) {
-            iterator_type it (data ().lower_bound (functor_type::address (i, size1_, j, size2_)));
-            iterator_type it_end (data ().end ());
+            subiterator_type it (data ().lower_bound (layout_type::address (i, size1_, j, size2_)));
+            subiterator_type it_end (data ().end ());
             size_type index1 = size_type (-1);
             size_type index2 = size_type (-1);
             while (rank == 1 && it != it_end) {
-                index1 = functor_type::index1 ((*it).first, size1_, size2_);
-                index2 = functor_type::index2 ((*it).first, size1_, size2_);
+                index1 = layout_type::index1 ((*it).first, size1_, size2_);
+                index2 = layout_type::index2 ((*it).first, size1_, size2_);
                 if (direction > 0) {
                     if ((index2 >= j && index1 == i) || (j >= size2_))
                         break;
@@ -603,7 +587,7 @@ namespace boost { namespace numeric { namespace ublas {
                         break;
                     -- j;
                 }
-                it = data ().lower_bound (functor_type::address (i, size1_, j, size2_));
+                it = data ().lower_bound (layout_type::address (i, size1_, j, size2_));
             }
             if (rank == 1 && index1 != i) {
                 if (direction > 0)
@@ -622,14 +606,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::const_reference reference;
             typedef const typename sparse_matrix::pointer pointer;
-#endif
+
             typedef const_iterator2 dual_iterator_type;
             typedef const_reverse_iterator2 dual_reverse_iterator_type;
 
@@ -638,7 +619,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator1 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const const_iterator_type &it):
+            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator1 (const iterator1 &it):
@@ -647,7 +628,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else
                     *this = (*this) ().find1 (rank_, index1 () + 1, j_, 1);
@@ -655,7 +636,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else
                     *this = (*this) ().find1 (rank_, index1 () - 1, j_, -1);
@@ -713,8 +694,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return i_;
                 }
@@ -724,8 +705,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return j_;
                 }
@@ -758,7 +739,7 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            const_iterator_type it_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -776,12 +757,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::true_reference reference;
             typedef typename sparse_matrix::pointer pointer;
-#endif
+
             typedef iterator2 dual_iterator_type;
             typedef reverse_iterator2 dual_reverse_iterator_type;
 
@@ -790,13 +770,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator1 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator1 (self_type &m, int rank, size_type i, size_type j, const iterator_type &it):
+            iterator1 (self_type &m, int rank, size_type i, size_type j, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else
                     *this = (*this) ().find1 (rank_, index1 () + 1, j_, 1);
@@ -804,7 +784,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else
                     *this = (*this) ().find1 (rank_, index1 () - 1, j_, -1);
@@ -862,8 +842,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return i_;
                 }
@@ -873,8 +853,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return j_;
                 }
@@ -907,7 +887,7 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            iterator_type it_;
+            subiterator_type it_;
 
             friend class const_iterator1;
         };
@@ -927,14 +907,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::const_reference reference;
             typedef const typename sparse_matrix::pointer pointer;
-#endif
+
             typedef const_iterator1 dual_iterator_type;
             typedef const_reverse_iterator1 dual_reverse_iterator_type;
 
@@ -943,7 +920,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator2 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const const_iterator_type &it):
+            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator2 (const iterator2 &it):
@@ -952,7 +929,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else
                     *this = (*this) ().find2 (rank_, i_, index2 () + 1, 1);
@@ -960,7 +937,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else
                     *this = (*this) ().find2 (rank_, i_, index2 () - 1, -1);
@@ -1018,8 +995,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return i_;
                 }
@@ -1029,8 +1006,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return j_;
                 }
@@ -1063,7 +1040,7 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            const_iterator_type it_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -1081,12 +1058,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::true_reference reference;
             typedef typename sparse_matrix::pointer pointer;
-#endif
+
             typedef iterator1 dual_iterator_type;
             typedef reverse_iterator1 dual_reverse_iterator_type;
 
@@ -1095,13 +1071,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator2 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator2 (self_type &m, int rank, size_type i, size_type j, const iterator_type &it):
+            iterator2 (self_type &m, int rank, size_type i, size_type j, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else
                     *this = (*this) ().find2 (rank_, i_, index2 () + 1, 1);
@@ -1109,7 +1085,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else
                     *this = (*this) ().find2 (rank_, i_, index2 () - 1, -1);
@@ -1167,8 +1143,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return i_;
                 }
@@ -1178,8 +1154,8 @@ namespace boost { namespace numeric { namespace ublas {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
                     const self_type &m = (*this) ();
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*it_).first, m.size1 (), m.size2 ());
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*it_).first, m.size1 (), m.size2 ()) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*it_).first, m.size1 (), m.size2 ());
                 } else {
                     return j_;
                 }
@@ -1212,7 +1188,7 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            iterator_type it_;
+            subiterator_type it_;
 
             friend class const_iterator2;
         };
@@ -1271,20 +1247,24 @@ namespace boost { namespace numeric { namespace ublas {
         static const value_type zero_;
     };
 
-    template<class T, class F, class A>
-    const typename sparse_matrix<T, F, A>::value_type sparse_matrix<T, F, A>::zero_
-#ifdef BOOST_UBLAS_STATIC_OLD_INIT
-        = BOOST_UBLAS_TYPENAME sparse_matrix<T, F, A>::value_type
-#endif
-        (0);
+    template<class T, class L, class A>
+    const typename sparse_matrix<T, L, A>::value_type sparse_matrix<T, L, A>::zero_ (0);
 
-    // Array based sparse matrix class
-    template<class T, class F, class A>
+
+    // Vector index map based sparse matrix class
+    template<class T, class L, class A>
     class sparse_vector_of_sparse_vector:
-        public matrix_expression<sparse_vector_of_sparse_vector<T, F, A> > {
+        public matrix_expression<sparse_vector_of_sparse_vector<T, L, A> > {
+
+        typedef T &true_reference;
+        typedef T *pointer;
+        typedef A array_type;
+        typedef const A const_array_type;
+        typedef L layout_type;
+        typedef sparse_vector_of_sparse_vector<T, L, A> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
-        BOOST_UBLAS_USING matrix_expression<sparse_vector_of_sparse_vector<T, F, A> >::operator ();
+        using matrix_expression<self_type>::operator ();
 #endif
         typedef typename A::size_type size_type;
         typedef typename A::difference_type difference_type;
@@ -1293,40 +1273,28 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
         typedef typename detail::map_traits<typename A::data_value_type, T>::reference reference;
 #else
-        typedef sparse_matrix_element<sparse_vector_of_sparse_vector<T, F, A> > reference;
+        typedef sparse_matrix_element<self_type> reference;
 #endif
-    private:
-        typedef T &true_reference;
-        typedef T *pointer;
-        typedef A array_type;
-        typedef const A const_array_type;
-        typedef F functor_type;
-        typedef sparse_vector_of_sparse_vector<T, F, A> self_type;
-    public:
-#ifndef BOOST_UBLAS_CT_REFERENCE_BASE_TYPEDEFS
-        typedef const matrix_const_reference<const self_type> const_closure_type;
-#else
         typedef const matrix_reference<const self_type> const_closure_type;
-#endif
         typedef matrix_reference<self_type> closure_type;
         typedef sparse_vector<T, typename A::value_type> vector_temporary_type;
         typedef self_type matrix_temporary_type;
         typedef typename A::value_type::second_type vector_data_value_type;
         typedef sparse_tag storage_category;
-        typedef typename F::orientation_category orientation_category;
+        typedef typename L::orientation_category orientation_category;
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector ():
             matrix_expression<self_type> (),
             size1_ (0), size2_ (0), non_zeros_ (0), data_ () {
-            data_ [functor_type::size1 (size1_, size2_)] = vector_data_value_type ();
+            data_ [layout_type::size1 (size1_, size2_)] = vector_data_value_type ();
         }
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector (size_type size1, size_type size2, size_type non_zeros = 0):
             matrix_expression<self_type> (),
             size1_ (size1), size2_ (size2), non_zeros_ (non_zeros), data_ () {
-            data_ [functor_type::size1 (size1_, size2_)] = vector_data_value_type ();
+            data_ [layout_type::size1 (size1_, size2_)] = vector_data_value_type ();
         }
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector (const sparse_vector_of_sparse_vector &m):
@@ -1337,8 +1305,8 @@ namespace boost { namespace numeric { namespace ublas {
         sparse_vector_of_sparse_vector (const matrix_expression<AE> &ae, size_type non_zeros = 0):
             matrix_expression<self_type> (),
             size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), non_zeros_ (non_zeros), data_ () {
-            data_ [functor_type::size1 (size1_, size2_)] = vector_data_value_type ();
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            data_ [layout_type::size1 (size1_, size2_)] = vector_data_value_type ();
+            matrix_assign<scalar_assign> (*this, ae);
         }
 
         // Accessors
@@ -1353,7 +1321,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         size_type non_zeros () const {
             size_type non_zeros = 0;
-            for (vector_const_iterator_type itv = data_ ().begin (); itv != data_ ().end (); ++ itv)
+            for (vector_const_subiterator_type itv = data_ ().begin (); itv != data_ ().end (); ++ itv)
                 non_zeros += (*itv).size ();
             return non_zeros;
         }
@@ -1374,19 +1342,23 @@ namespace boost { namespace numeric { namespace ublas {
             size1_ = size1;
             size2_ = size2;
             data ().clear ();
-            data () [functor_type::size1 (size1_, size2_)] = vector_data_value_type ();
+            data () [layout_type::size1 (size1_, size2_)] = vector_data_value_type ();
         }
 
         // Proxy support
 #ifdef BOOST_UBLAS_STRICT_MATRIX_SPARSE
         BOOST_UBLAS_INLINE
         pointer find_element (size_type i, size_type j) {
-            vector_iterator_type itv (data ().find (functor_type::element1 (i, size1_, j, size2_)));
-            if (itv == data ().end () || (*itv).first != functor_type::element1 (i, size1_, j, size2_))
+            const size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            const size_type element2 = layout_type::element2 (i, size1_, j, size2_);
+            vector_subiterator_type itv (data ().find (element1));
+            if (itv == data ().end ())
                 return 0;
-            iterator_type it ((*itv).second.find (functor_type::element2 (i, size1_, j, size2_)));
-            if (it == (*itv).second.end () || (*it).first != functor_type::element2 (i, size1_, j, size2_))
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            subiterator_type it ((*itv).second.find (element2));
+            if (it == (*itv).second.end ())
                 return 0;
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
             return &(*it).second;
         }
 #endif
@@ -1394,17 +1366,21 @@ namespace boost { namespace numeric { namespace ublas {
         // Element access
         BOOST_UBLAS_INLINE
         const_reference at_element (size_type i, size_type j) const {
-            vector_const_iterator_type itv (data ().find (functor_type::element1 (i, size1_, j, size2_)));
-            if (itv == data ().end () || (*itv).first != functor_type::element1 (i, size1_, j, size2_))
+            const size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            const size_type element2 = layout_type::element2 (i, size1_, j, size2_);
+            vector_const_subiterator_type itv (data ().find (element1));
+            if (itv == data ().end ())
                 return zero_;
-            const_iterator_type it ((*itv).second.find (functor_type::element2 (i, size1_, j, size2_)));
-            if (it == (*itv).second.end () || (*it).first != functor_type::element2 (i, size1_, j, size2_))
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            const_subiterator_type it ((*itv).second.find (element2));
+            if (it == (*itv).second.end ())
                 return zero_;
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
             return (*it).second;
         }
         BOOST_UBLAS_INLINE
         true_reference at_element (size_type i, size_type j) {
-            return data () [functor_type::element1 (i, size1_, j, size2_)] [functor_type::element2 (i, size1_, j, size2_)];
+            return data () [layout_type::element1 (i, size1_, j, size2_)] [layout_type::element2 (i, size1_, j, size2_)];
         }
         BOOST_UBLAS_INLINE
         const_reference operator () (size_type i, size_type j) const {
@@ -1445,7 +1421,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector &assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -1458,7 +1434,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector &plus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_plus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_plus_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -1471,19 +1447,19 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector &minus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_minus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_minus_assign> (*this, ae);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector& operator *= (const AT &at) {
-            matrix_assign_scalar (scalar_multiplies_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_multiplies_assign> (*this, at);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         sparse_vector_of_sparse_vector& operator /= (const AT &at) {
-            matrix_assign_scalar (scalar_divides_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_divides_assign> (*this, at);
             return *this;
         }
 
@@ -1497,28 +1473,28 @@ namespace boost { namespace numeric { namespace ublas {
                 data ().swap (m.data ());
             }
         }
-#ifndef BOOST_UBLAS_NO_MEMBER_FRIENDS
         BOOST_UBLAS_INLINE
         friend void swap (sparse_vector_of_sparse_vector &m1, sparse_vector_of_sparse_vector &m2) {
             m1.swap (m2);
         }
-#endif
 
         // Element insertion and erasure
         BOOST_UBLAS_INLINE
         void insert (size_type i, size_type j, const_reference t) {
-            vector_iterator_type itv (data ().find (functor_type::element1 (i, size1_, j, size2_)));
+            const size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            const size_type element2 = layout_type::element2 (i, size1_, j, size2_);
+            vector_subiterator_type itv (data ().find (element1));
             if (itv == data ().end ())
-                itv = data ().insert (data ().end (), BOOST_UBLAS_TYPENAME array_type::value_type (functor_type::element1 (i, size1_, j, size2_), vector_data_value_type ()));
-            BOOST_UBLAS_CHECK ((*itv).second.find (functor_type::element2 (i, size1_, j, size2_)) == (*itv).second.end (), bad_index ());
-            (*itv).second.insert ((*itv).second.end (), BOOST_UBLAS_TYPENAME array_type::value_type::second_type::value_type (functor_type::element2 (i, size1_, j, size2_), t));
+                itv = data ().insert (data ().end (), typename array_type::value_type (element1, vector_data_value_type ()));
+            BOOST_UBLAS_CHECK ((*itv).second.find (element2) == (*itv).second.end (), bad_index ());
+            (*itv).second.insert ((*itv).second.end (), typename array_type::value_type::second_type::value_type (element2, t));
         }
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
-            vector_iterator_type itv (data ().find (functor_type::element1 (i, size1_, j, size2_)));
+            vector_subiterator_type itv (data ().find (layout_type::element1 (i, size1_, j, size2_)));
             if (itv == data ().end ())
                 return;
-            iterator_type it ((*itv).second.find (functor_type::element2 (i, size1_, j, size2_)));
+            subiterator_type it ((*itv).second.find (layout_type::element2 (i, size1_, j, size2_)));
             if (it == (*itv).second.end ())
                 return;
             (*itv).second.erase (it);
@@ -1526,53 +1502,45 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void clear () {
             data ().clear ();
-            data_ [functor_type::size1 (size1_, size2_)] = vector_data_value_type ();
+            data_ [layout_type::size1 (size1_, size2_)] = vector_data_value_type ();
         }
 
         // Iterator types
     private:
         // Use storage iterators
-        typedef typename A::const_iterator vector_const_iterator_type;
-        typedef typename A::iterator vector_iterator_type;
-        typedef typename A::value_type::second_type::const_iterator const_iterator_type;
-        typedef typename A::value_type::second_type::iterator iterator_type;
+        typedef typename A::const_iterator vector_const_subiterator_type;
+        typedef typename A::iterator vector_subiterator_type;
+        typedef typename A::value_type::second_type::const_iterator const_subiterator_type;
+        typedef typename A::value_type::second_type::iterator subiterator_type;
 
     public:
         class const_iterator1;
         class iterator1;
         class const_iterator2;
         class iterator2;
-#ifdef BOOST_MSVC_STD_ITERATOR
-        typedef reverse_iterator_base1<const_iterator1, value_type, const_reference> const_reverse_iterator1;
-        typedef reverse_iterator_base1<iterator1, value_type, reference> reverse_iterator1;
-        typedef reverse_iterator_base2<const_iterator2, value_type, const_reference> const_reverse_iterator2;
-        typedef reverse_iterator_base2<iterator2, value_type, reference> reverse_iterator2;
-#else
         typedef reverse_iterator_base1<const_iterator1> const_reverse_iterator1;
         typedef reverse_iterator_base1<iterator1> reverse_iterator1;
         typedef reverse_iterator_base2<const_iterator2> const_reverse_iterator2;
         typedef reverse_iterator_base2<iterator2> reverse_iterator2;
-#endif
 
         // Element lookup
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) const {
             BOOST_UBLAS_CHECK (data ().begin () != data ().end (), internal_logic ());
             for (;;) {
-                vector_const_iterator_type itv (data ().lower_bound (functor_type::address1 (i, size1_, j, size2_)));
-                vector_const_iterator_type itv_end (data ().end ());
+                vector_const_subiterator_type itv (data ().lower_bound (layout_type::address1 (i, size1_, j, size2_)));
+                vector_const_subiterator_type itv_end (data ().end ());
                 if (itv == itv_end)
                     return const_iterator1 (*this, rank, i, j, itv_end, (*(-- itv)).second.end ());
 
-                const_iterator_type it ((*itv).second.lower_bound (functor_type::address2 (i, size1_, j, size2_)));
-                const_iterator_type it_end ((*itv).second.end ());
+                const_subiterator_type it ((*itv).second.lower_bound (layout_type::address2 (i, size1_, j, size2_)));
+                const_subiterator_type it_end ((*itv).second.end ());
                 if (rank == 0)
                     return const_iterator1 (*this, rank, i, j, itv, it);
-                if (it != it_end && (*it).first == functor_type::address2 (i, size1_, j, size2_))
+                if (it != it_end && (*it).first == layout_type::address2 (i, size1_, j, size2_))
                     return const_iterator1 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == it_end)
                             return const_iterator1 (*this, rank, i, j, itv, it);
                         i = (*it).first;
@@ -1582,7 +1550,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ i;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == (*itv).second.begin ())
                             return const_iterator1 (*this, rank, i, j, itv, it);
                         -- it;
@@ -1595,24 +1563,23 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) {
             BOOST_UBLAS_CHECK (data ().begin () != data ().end (), internal_logic ());
             for (;;) {
-                vector_iterator_type itv (data ().lower_bound (functor_type::address1 (i, size1_, j, size2_)));
-                vector_iterator_type itv_end (data ().end ());
+                vector_subiterator_type itv (data ().lower_bound (layout_type::address1 (i, size1_, j, size2_)));
+                vector_subiterator_type itv_end (data ().end ());
                 if (itv == itv_end)
                     return iterator1 (*this, rank, i, j, itv_end, (*(-- itv)).second.end ());
 
-                iterator_type it ((*itv).second.lower_bound (functor_type::address2 (i, size1_, j, size2_)));
-                iterator_type it_end ((*itv).second.end ());
+                subiterator_type it ((*itv).second.lower_bound (layout_type::address2 (i, size1_, j, size2_)));
+                subiterator_type it_end ((*itv).second.end ());
                 if (rank == 0)
                     return iterator1 (*this, rank, i, j, itv, it);
-                if (it != it_end && (*it).first == functor_type::address2 (i, size1_, j, size2_))
+                if (it != it_end && (*it).first == layout_type::address2 (i, size1_, j, size2_))
                     return iterator1 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == it_end)
                             return iterator1 (*this, rank, i, j, itv, it);
                         i = (*it).first;
@@ -1622,7 +1589,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ i;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == (*itv).second.begin ())
                             return iterator1 (*this, rank, i, j, itv, it);
                         -- it;
@@ -1635,24 +1602,23 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) const {
             BOOST_UBLAS_CHECK (data ().begin () != data ().end (), internal_logic ());
             for (;;) {
-                vector_const_iterator_type itv (data ().lower_bound (functor_type::address1 (i, size1_, j, size2_)));
-                vector_const_iterator_type itv_end (data ().end ());
+                vector_const_subiterator_type itv (data ().lower_bound (layout_type::address1 (i, size1_, j, size2_)));
+                vector_const_subiterator_type itv_end (data ().end ());
                 if (itv == itv_end)
                     return const_iterator2 (*this, rank, i, j, itv_end, (*(-- itv)).second.end ());
 
-                const_iterator_type it ((*itv).second.lower_bound (functor_type::address2 (i, size1_, j, size2_)));
-                const_iterator_type it_end ((*itv).second.end ());
+                const_subiterator_type it ((*itv).second.lower_bound (layout_type::address2 (i, size1_, j, size2_)));
+                const_subiterator_type it_end ((*itv).second.end ());
                 if (rank == 0)
                     return const_iterator2 (*this, rank, i, j, itv, it);
-                if (it != it_end && (*it).first == functor_type::address2 (i, size1_, j, size2_))
+                if (it != it_end && (*it).first == layout_type::address2 (i, size1_, j, size2_))
                     return const_iterator2 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == it_end)
                             return const_iterator2 (*this, rank, i, j, itv, it);
                         j = (*it).first;
@@ -1662,7 +1628,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ j;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == (*itv).second.begin ())
                             return const_iterator2 (*this, rank, i, j, itv, it);
                         -- it;
@@ -1675,24 +1641,23 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) {
             BOOST_UBLAS_CHECK (data ().begin () != data ().end (), internal_logic ());
             for (;;) {
-                vector_iterator_type itv (data ().lower_bound (functor_type::address1 (i, size1_, j, size2_)));
-                vector_iterator_type itv_end (data ().end ());
+                vector_subiterator_type itv (data ().lower_bound (layout_type::address1 (i, size1_, j, size2_)));
+                vector_subiterator_type itv_end (data ().end ());
                 if (itv == itv_end)
                     return iterator2 (*this, rank, i, j, itv_end, (*(-- itv)).second.end ());
 
-                iterator_type it ((*itv).second.lower_bound (functor_type::address2 (i, size1_, j, size2_)));
-                iterator_type it_end ((*itv).second.end ());
+                subiterator_type it ((*itv).second.lower_bound (layout_type::address2 (i, size1_, j, size2_)));
+                subiterator_type it_end ((*itv).second.end ());
                 if (rank == 0)
                     return iterator2 (*this, rank, i, j, itv, it);
-                if (it != it_end && (*it).first == functor_type::address2 (i, size1_, j, size2_))
+                if (it != it_end && (*it).first == layout_type::address2 (i, size1_, j, size2_))
                     return iterator2 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == it_end)
                             return iterator2 (*this, rank, i, j, itv, it);
                         j = (*it).first;
@@ -1702,7 +1667,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ j;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == (*itv).second.begin ())
                             return iterator2 (*this, rank, i, j, itv, it);
                         -- it;
@@ -1715,7 +1680,6 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-
 
         class const_iterator1:
             public container_const_reference<sparse_vector_of_sparse_vector>,
@@ -1723,14 +1687,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::const_reference reference;
             typedef const typename sparse_vector_of_sparse_vector::pointer pointer;
-#endif
+
             typedef const_iterator2 dual_iterator_type;
             typedef const_reverse_iterator2 dual_reverse_iterator_type;
 
@@ -1739,7 +1700,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator1 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const vector_const_iterator_type &itv, const const_iterator_type &it):
+            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const vector_const_subiterator_type &itv, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator1 (const iterator1 &it):
@@ -1748,7 +1709,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else {
                     const self_type &m = (*this) ();
@@ -1765,7 +1726,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else {
                     const self_type &m = (*this) ();
@@ -1831,8 +1792,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*itv_).first, (*it_).first);
                 } else {
                     return i_;
                 }
@@ -1841,8 +1802,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*itv_).first, (*it_).first);
                 } else {
                     return j_;
                 }
@@ -1876,8 +1837,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_const_iterator_type itv_;
-            const_iterator_type it_;
+            vector_const_subiterator_type itv_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -1895,12 +1856,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::true_reference reference;
             typedef typename sparse_vector_of_sparse_vector::pointer pointer;
-#endif
+
             typedef iterator2 dual_iterator_type;
             typedef reverse_iterator2 dual_reverse_iterator_type;
 
@@ -1909,13 +1869,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator1 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator1 (self_type &m, int rank, size_type i, size_type j, const vector_iterator_type &itv, const iterator_type &it):
+            iterator1 (self_type &m, int rank, size_type i, size_type j, const vector_subiterator_type &itv, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else {
                     self_type &m = (*this) ();
@@ -1932,7 +1892,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else {
                     self_type &m = (*this) ();
@@ -1998,8 +1958,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*itv_).first, (*it_).first);
                 } else {
                     return i_;
                 }
@@ -2008,8 +1968,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*itv_).first, (*it_).first);
                 } else {
                     return j_;
                 }
@@ -2043,8 +2003,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_iterator_type itv_;
-            iterator_type it_;
+            vector_subiterator_type itv_;
+            subiterator_type it_;
 
             friend class const_iterator1;
         };
@@ -2064,14 +2024,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::const_reference reference;
             typedef const typename sparse_vector_of_sparse_vector::pointer pointer;
-#endif
+
             typedef const_iterator1 dual_iterator_type;
             typedef const_reverse_iterator1 dual_reverse_iterator_type;
 
@@ -2080,7 +2037,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator2 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const vector_const_iterator_type &itv, const const_iterator_type &it):
+            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const vector_const_subiterator_type &itv, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator2 (const iterator2 &it):
@@ -2089,7 +2046,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else {
                     const self_type &m = (*this) ();
@@ -2106,7 +2063,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else {
                     const self_type &m = (*this) ();
@@ -2172,8 +2129,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*itv_).first, (*it_).first);
                 } else {
                     return i_;
                 }
@@ -2182,8 +2139,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*itv_).first, (*it_).first);
                 } else {
                     return j_;
                 }
@@ -2217,8 +2174,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_const_iterator_type itv_;
-            const_iterator_type it_;
+            vector_const_subiterator_type itv_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -2236,12 +2193,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::true_reference reference;
             typedef typename sparse_vector_of_sparse_vector::pointer pointer;
-#endif
+
             typedef iterator1 dual_iterator_type;
             typedef reverse_iterator1 dual_reverse_iterator_type;
 
@@ -2250,13 +2206,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator2 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator2 (self_type &m, int rank, size_type i, size_type j, const vector_iterator_type &itv, const iterator_type &it):
+            iterator2 (self_type &m, int rank, size_type i, size_type j, const vector_subiterator_type &itv, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else {
                     self_type &m = (*this) ();
@@ -2273,7 +2229,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else {
                     self_type &m = (*this) ();
@@ -2339,8 +2295,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*itv_).first, (*it_).first) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*itv_).first, (*it_).first);
                 } else {
                     return i_;
                 }
@@ -2349,8 +2305,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*itv_).first, (*it_).first);
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*itv_).first, (*it_).first) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*itv_).first, (*it_).first);
                 } else {
                     return j_;
                 }
@@ -2384,8 +2340,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_iterator_type itv_;
-            iterator_type it_;
+            vector_subiterator_type itv_;
+            subiterator_type it_;
 
             friend class const_iterator2;
         };
@@ -2445,22 +2401,23 @@ namespace boost { namespace numeric { namespace ublas {
         static const value_type zero_;
     };
 
-    template<class T, class F, class A>
-    const typename sparse_vector_of_sparse_vector<T, F, A>::value_type sparse_vector_of_sparse_vector<T, F, A>::zero_
-#ifdef BOOST_UBLAS_STATIC_OLD_INIT
-        = BOOST_UBLAS_TYPENAME sparse_vector_of_sparse_vector<T, F, A>::value_type
-#endif
-        (0);
+    template<class T, class L, class A>
+    const typename sparse_vector_of_sparse_vector<T, L, A>::value_type sparse_vector_of_sparse_vector<T, L, A>::zero_ (0);
 
 
     // Array based sparse matrix class
     // Thanks to Kresimir Fresl for extending this to cover different index bases.
-    template<class T, class F, std::size_t IB, class IA, class TA>
+    template<class T, class L, std::size_t IB, class IA, class TA>
     class compressed_matrix:
-        public matrix_expression<compressed_matrix<T, F, IB, IA, TA> > {
+        public matrix_expression<compressed_matrix<T, L, IB, IA, TA> > {
+
+        typedef T &true_reference;
+        typedef T *pointer;
+        typedef L layout_type;
+        typedef compressed_matrix<T, L, IB, IA, TA> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
-        BOOST_UBLAS_USING matrix_expression<compressed_matrix<T, F, IB, IA, TA> >::operator ();
+        using matrix_expression<self_type>::operator ();
 #endif
         // ISSUE require type consistency check for IA TA and IA::value_type
         typedef typename IA::size_type size_type;
@@ -2470,26 +2427,16 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
         typedef T &reference;
 #else
-        typedef sparse_matrix_element<compressed_matrix<T, F, IB, IA, TA> > reference;
+        typedef sparse_matrix_element<self_type> reference;
 #endif
         typedef IA index_array_type;
         typedef TA value_array_type;
-    private:
-        typedef T &true_reference;
-        typedef T *pointer;
-        typedef F functor_type;
-        typedef compressed_matrix<T, F, IB, IA, TA> self_type;
-    public:
-#ifndef BOOST_UBLAS_CT_REFERENCE_BASE_TYPEDEFS
-        typedef const matrix_const_reference<const self_type> const_closure_type;
-#else
         typedef const matrix_reference<const self_type> const_closure_type;
-#endif
         typedef matrix_reference<self_type> closure_type;
         typedef compressed_vector<T, IB, IA, TA> vector_temporary_type;
         typedef self_type matrix_temporary_type;
         typedef sparse_tag storage_category;
-        typedef typename F::orientation_category orientation_category;
+        typedef typename L::orientation_category orientation_category;
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
@@ -2497,7 +2444,7 @@ namespace boost { namespace numeric { namespace ublas {
             matrix_expression<self_type> (),
             size1_ (0), size2_ (0), non_zeros_ (max_nz (0)),
             filled1_ (1), filled2_ (0),
-            index1_data_ (functor_type::size1 (size1_, size2_) + 1),
+            index1_data_ (layout_type::size1 (size1_, size2_) + 1),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
             index1_data_ [filled1_ - 1] = k_based (filled2_);
         }
@@ -2506,7 +2453,7 @@ namespace boost { namespace numeric { namespace ublas {
             matrix_expression<self_type> (),
             size1_ (size1), size2_ (size2), non_zeros_ (max_nz (non_zeros)),
             filled1_ (1), filled2_ (0),
-            index1_data_ (functor_type::size1 (size1_, size2_) + 1),
+            index1_data_ (layout_type::size1 (size1_, size2_) + 1),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
             index1_data_ [filled1_ - 1] = k_based (filled2_);
         }
@@ -2525,10 +2472,10 @@ namespace boost { namespace numeric { namespace ublas {
             matrix_expression<self_type> (),
             size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), non_zeros_ (max_nz (non_zeros)),
             filled1_ (1), filled2_ (0),
-            index1_data_ (functor_type::size1 (ae ().size1 (), ae ().size2 ()) + 1),
+            index1_data_ (layout_type::size1 (ae ().size1 (), ae ().size2 ()) + 1),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
             index1_data_ [filled1_ - 1] = k_based (filled2_);
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
         }
 
         // Accessors
@@ -2607,7 +2554,7 @@ namespace boost { namespace numeric { namespace ublas {
             non_zeros_ = max_nz (non_zeros_);
             filled1_ = 1;
             filled2_ = 0;
-            index1_data ().resize (functor_type::size1 (size1_, size2_) + 1);
+            index1_data ().resize (layout_type::size1 (size1_, size2_) + 1);
             index2_data ().resize (non_zeros_);
             value_data ().resize (non_zeros_);
             index1_data_ [filled1_ - 1] = k_based (filled2_);
@@ -2636,14 +2583,14 @@ namespace boost { namespace numeric { namespace ublas {
 #ifdef BOOST_UBLAS_STRICT_MATRIX_SPARSE
         BOOST_UBLAS_INLINE
         pointer find_element (size_type i, size_type j) {
-            size_type element1 (functor_type::element1 (i, size1_, j, size2_));
-            size_type element2 (functor_type::element2 (i, size1_, j, size2_));
+            size_type element1 (layout_type::element1 (i, size1_, j, size2_));
+            size_type element2 (layout_type::element2 (i, size1_, j, size2_));
             if (filled1_ <= element1 + 1)
                 return 0;
-            vector_const_iterator_type itv (index1_data ().begin () + element1);
-            const_iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-            const_iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
-            const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            vector_const_subiterator_type itv (index1_data ().begin () + element1);
+            const_subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+            const_subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+            const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it == it_end || *it != k_based (element2))
                 return 0;
             return &value_data () [it - index2_data ().begin ()];
@@ -2653,28 +2600,28 @@ namespace boost { namespace numeric { namespace ublas {
         // Element access
         BOOST_UBLAS_INLINE
         const_reference at_element (size_type i, size_type j) const {
-            size_type element1 (functor_type::element1 (i, size1_, j, size2_));
-            size_type element2 (functor_type::element2 (i, size1_, j, size2_));
+            size_type element1 (layout_type::element1 (i, size1_, j, size2_));
+            size_type element2 (layout_type::element2 (i, size1_, j, size2_));
             if (filled1_ <= element1 + 1)
                 return zero_;
-            vector_const_iterator_type itv (index1_data ().begin () + element1);
-            const_iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-            const_iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
-            const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            vector_const_subiterator_type itv (index1_data ().begin () + element1);
+            const_subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+            const_subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+            const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it == it_end || *it != k_based (element2))
                 return zero_;
             return value_data () [it - index2_data ().begin ()];
         }
         BOOST_UBLAS_INLINE
         true_reference at_element (size_type i, size_type j) {
-            size_type element1 (functor_type::element1 (i, size1_, j, size2_));
-            size_type element2 (functor_type::element2 (i, size1_, j, size2_));
+            size_type element1 (layout_type::element1 (i, size1_, j, size2_));
+            size_type element2 (layout_type::element2 (i, size1_, j, size2_));
             if (filled1_ <= element1 + 1)
                 insert (i, j, value_type (0));
-            vector_const_iterator_type itv (index1_data ().begin () + element1);
-            const_iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-            const_iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
-            const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            vector_const_subiterator_type itv (index1_data ().begin () + element1);
+            const_subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+            const_subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+            const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it == it_end || *it != k_based (element2)) {
                 insert (i, j, value_type (0));
                 it_begin = index2_data ().begin () + zero_based (*itv);
@@ -2708,7 +2655,7 @@ namespace boost { namespace numeric { namespace ublas {
                 index1_data () = m.index1_data ();
                 index2_data () = m.index2_data ();
                 value_data () = m.value_data ();
-                BOOST_UBLAS_CHECK (functor_type::size1 (size1_, size2_) + 1 == index1_data ().size (), internal_logic ());
+                BOOST_UBLAS_CHECK (layout_type::size1 (size1_, size2_) + 1 == index1_data ().size (), internal_logic ());
                 BOOST_UBLAS_CHECK (non_zeros_ == index2_data ().size (), internal_logic ());
                 BOOST_UBLAS_CHECK (non_zeros_ == value_data ().size (), internal_logic ());
             }
@@ -2729,7 +2676,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_matrix &assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -2742,7 +2689,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_matrix &plus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_plus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_plus_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -2755,19 +2702,19 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_matrix &minus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_minus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_minus_assign> (*this, ae);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         compressed_matrix& operator *= (const AT &at) {
-            matrix_assign_scalar (scalar_multiplies_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_multiplies_assign> (*this, at);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         compressed_matrix& operator /= (const AT &at) {
-            matrix_assign_scalar (scalar_divides_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_divides_assign> (*this, at);
             return *this;
         }
 
@@ -2785,12 +2732,10 @@ namespace boost { namespace numeric { namespace ublas {
                 value_data ().swap (m.value_data ());
             }
         }
-#ifndef BOOST_UBLAS_NO_MEMBER_FRIENDS
         BOOST_UBLAS_INLINE
         friend void swap (compressed_matrix &m1, compressed_matrix &m2) {
             m1.swap (m2);
         }
-#endif
 
         // Element insertion and erasure
         BOOST_UBLAS_INLINE
@@ -2798,8 +2743,8 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (index1_data () [filled1_ - 1] == k_based (filled2_), internal_logic ());
             if (filled2_ >= non_zeros_)
                 reserve (2 * non_zeros_, true);
-            size_type element1 = functor_type::element1 (i, size1_, j, size2_);
-            size_type element2 = functor_type::element2 (i, size1_, j, size2_);
+            size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             while (filled1_ < element1 + 2) {
                 index1_data () [filled1_] = k_based (filled2_);
                 ++ filled1_;
@@ -2821,16 +2766,16 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (index1_data () [filled1_ - 1] == k_based (filled2_), internal_logic ());
             if (filled2_ >= non_zeros_)
                 reserve (2 * non_zeros_, true);
-            size_type element1 = functor_type::element1 (i, size1_, j, size2_);
-            size_type element2 = functor_type::element2 (i, size1_, j, size2_);
+            size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             while (filled1_ < element1 + 2) {
                 index1_data () [filled1_] = k_based (filled2_);
                 ++ filled1_;
             }
-            vector_iterator_type itv (index1_data ().begin () + element1);
-            iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-            iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
-            iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            vector_subiterator_type itv (index1_data ().begin () + element1);
+            subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+            subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+            subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             difference_type n = it - index2_data ().begin ();
             BOOST_UBLAS_CHECK (it == it_end || *it != k_based (element2), external_logic ());
             ++ filled2_;
@@ -2861,14 +2806,14 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
             BOOST_UBLAS_CHECK (index1_data () [filled1_ - 1] == k_based (filled2_), internal_logic ());
-            size_type element1 = functor_type::element1 (i, size1_, j, size2_);
-            size_type element2 = functor_type::element2 (i, size1_, j, size2_);
+            size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             if (element1 + 1 > filled1_)
                 return;
-            vector_iterator_type itv (index1_data ().begin () + element1);
-            iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-            iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
-            iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            vector_subiterator_type itv (index1_data ().begin () + element1);
+            subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+            subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+            subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it != it_end && *it == k_based (element2)) {
                 difference_type n = it - index2_data ().begin ();
                 std::copy (it + 1, index2_data ().begin () + filled2_, it);
@@ -2896,49 +2841,41 @@ namespace boost { namespace numeric { namespace ublas {
         // Iterator types
     private:
         // Use index array iterator
-        typedef typename IA::const_iterator vector_const_iterator_type;
-        typedef typename IA::iterator vector_iterator_type;
-        typedef typename IA::const_iterator const_iterator_type;
-        typedef typename IA::iterator iterator_type;
+        typedef typename IA::const_iterator vector_const_subiterator_type;
+        typedef typename IA::iterator vector_subiterator_type;
+        typedef typename IA::const_iterator const_subiterator_type;
+        typedef typename IA::iterator subiterator_type;
 
     public:
         class const_iterator1;
         class iterator1;
         class const_iterator2;
         class iterator2;
-#ifdef BOOST_MSVC_STD_ITERATOR
-        typedef reverse_iterator_base1<const_iterator1, value_type, const_reference> const_reverse_iterator1;
-        typedef reverse_iterator_base1<iterator1, value_type, reference> reverse_iterator1;
-        typedef reverse_iterator_base2<const_iterator2, value_type, const_reference> const_reverse_iterator2;
-        typedef reverse_iterator_base2<iterator2, value_type, reference> reverse_iterator2;
-#else
         typedef reverse_iterator_base1<const_iterator1> const_reverse_iterator1;
         typedef reverse_iterator_base1<iterator1> reverse_iterator1;
         typedef reverse_iterator_base2<const_iterator2> const_reverse_iterator2;
         typedef reverse_iterator_base2<iterator2> reverse_iterator2;
-#endif
 
         // Element lookup
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) const {
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_const_iterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_const_subiterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
                 if (filled1_ <= address1 + 1)
                     return const_iterator1 (*this, rank, i, j, itv, index2_data ().begin () + filled2_);
 
-                const_iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-                const_iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+                const_subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+                const_subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
 
-                const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
                 if (rank == 0)
                     return const_iterator1 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return const_iterator1 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == it_end)
                             return const_iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*it);
@@ -2948,7 +2885,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ i;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return const_iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*(it - 1));
@@ -2960,26 +2897,25 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) {
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_iterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_subiterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
                 if (filled1_ <= address1 + 1)
                     return iterator1 (*this, rank, i, j, itv, index2_data ().begin () + filled2_);
 
-                iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-                iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+                subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+                subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
 
-                iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
                 if (rank == 0)
                     return iterator1 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return iterator1 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == it_end)
                             return iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*it);
@@ -2989,7 +2925,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ i;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*(it - 1));
@@ -3001,26 +2937,25 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) const {
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_const_iterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_const_subiterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
                 if (filled1_ <= address1 + 1)
                     return const_iterator2 (*this, rank, i, j, itv, index2_data ().begin () + filled2_);
 
-                const_iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-                const_iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+                const_subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+                const_subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
 
-                const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
                 if (rank == 0)
                     return const_iterator2 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return const_iterator2 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == it_end)
                             return const_iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*it);
@@ -3030,7 +2965,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ j;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return const_iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*(it - 1));
@@ -3042,26 +2977,25 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) {
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_iterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_subiterator_type itv (index1_data ().begin () + (std::min) (filled1_ - 1, address1));
                 if (filled1_ <= address1 + 1)
                     return iterator2 (*this, rank, i, j, itv, index2_data ().begin () + filled2_);
 
-                iterator_type it_begin (index2_data ().begin () + zero_based (*itv));
-                iterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
+                subiterator_type it_begin (index2_data ().begin () + zero_based (*itv));
+                subiterator_type it_end (index2_data ().begin () + zero_based (*(itv + 1)));
 
-                iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
                 if (rank == 0)
                     return iterator2 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return iterator2 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == it_end)
                             return iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*it);
@@ -3071,7 +3005,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ j;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*(it - 1));
@@ -3091,14 +3025,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::const_reference reference;
             typedef const typename compressed_matrix::pointer pointer;
-#endif
+
             typedef const_iterator2 dual_iterator_type;
             typedef const_reverse_iterator2 dual_reverse_iterator_type;
 
@@ -3107,7 +3038,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator1 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const vector_const_iterator_type &itv, const const_iterator_type &it):
+            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const vector_const_subiterator_type &itv, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator1 (const iterator1 &it):
@@ -3116,7 +3047,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else {
                     i_ = index1 () + 1;
@@ -3127,7 +3058,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else {
                     i_ = index1 () - 1;
@@ -3187,8 +3118,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -3197,8 +3128,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -3232,8 +3163,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_const_iterator_type itv_;
-            const_iterator_type it_;
+            vector_const_subiterator_type itv_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -3251,12 +3182,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::true_reference reference;
             typedef typename compressed_matrix::pointer pointer;
-#endif
+
             typedef iterator2 dual_iterator_type;
             typedef reverse_iterator2 dual_reverse_iterator_type;
 
@@ -3265,13 +3195,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator1 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator1 (self_type &m, int rank, size_type i, size_type j, const vector_iterator_type &itv, const iterator_type &it):
+            iterator1 (self_type &m, int rank, size_type i, size_type j, const vector_subiterator_type &itv, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else {
                     i_ = index1 () + 1;
@@ -3282,7 +3212,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else {
                     i_ = index1 () - 1;
@@ -3342,8 +3272,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -3352,8 +3282,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -3387,8 +3317,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_iterator_type itv_;
-            iterator_type it_;
+            vector_subiterator_type itv_;
+            subiterator_type it_;
 
             friend class const_iterator1;
         };
@@ -3408,14 +3338,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::const_reference reference;
             typedef const typename compressed_matrix::pointer pointer;
-#endif
+
             typedef const_iterator1 dual_iterator_type;
             typedef const_reverse_iterator1 dual_reverse_iterator_type;
 
@@ -3424,7 +3351,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator2 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const vector_const_iterator_type itv, const const_iterator_type &it):
+            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const vector_const_subiterator_type itv, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator2 (const iterator2 &it):
@@ -3433,7 +3360,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else {
                     j_ = index2 () + 1;
@@ -3444,7 +3371,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else {
                     j_ = index2 () - 1;
@@ -3504,8 +3431,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -3514,8 +3441,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -3549,8 +3476,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_const_iterator_type itv_;
-            const_iterator_type it_;
+            vector_const_subiterator_type itv_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -3568,12 +3495,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::true_reference reference;
             typedef typename compressed_matrix::pointer pointer;
-#endif
+
             typedef iterator1 dual_iterator_type;
             typedef reverse_iterator1 dual_reverse_iterator_type;
 
@@ -3582,13 +3508,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator2 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator2 (self_type &m, int rank, size_type i, size_type j, const vector_iterator_type &itv, const iterator_type &it):
+            iterator2 (self_type &m, int rank, size_type i, size_type j, const vector_subiterator_type &itv, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else {
                     j_ = index2 () + 1;
@@ -3599,7 +3525,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else {
                     j_ = index2 ();
@@ -3659,8 +3585,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -3669,8 +3595,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 (itv_ - (*this) ().index1_data ().begin (), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -3704,8 +3630,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_iterator_type itv_;
-            iterator_type it_;
+            vector_subiterator_type itv_;
+            subiterator_type it_;
 
             friend class const_iterator2;
         };
@@ -3783,22 +3709,23 @@ namespace boost { namespace numeric { namespace ublas {
         friend class const_iterator2;
     };
 
-    template<class T, class F, std::size_t IB, class IA, class TA>
-    const typename compressed_matrix<T, F, IB, IA, TA>::value_type compressed_matrix<T, F, IB, IA, TA>::zero_
-#ifdef BOOST_UBLAS_STATIC_OLD_INIT
-        = BOOST_UBLAS_TYPENAME compressed_matrix<T, F, IB, IA, TA>::value_type
-#endif
-        (0);
+    template<class T, class L, std::size_t IB, class IA, class TA>
+    const typename compressed_matrix<T, L, IB, IA, TA>::value_type compressed_matrix<T, L, IB, IA, TA>::zero_ (0);
 
 
     // Array based sparse matrix class
     // Thanks to Kresimir Fresl for extending this to cover different index bases.
-    template<class T, class F, std::size_t IB, class IA, class TA>
+    template<class T, class L, std::size_t IB, class IA, class TA>
     class coordinate_matrix:
-        public matrix_expression<coordinate_matrix<T, F, IB, IA, TA> > {
+        public matrix_expression<coordinate_matrix<T, L, IB, IA, TA> > {
+
+        typedef T &true_reference;
+        typedef T *pointer;
+        typedef L layout_type;
+        typedef coordinate_matrix<T, L, IB, IA, TA> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
-        BOOST_UBLAS_USING matrix_expression<coordinate_matrix<T, F, IB, IA, TA> >::operator ();
+        using matrix_expression<self_type>::operator ();
 #endif
         // ISSUE require type consistency check for IA TA and IA::value_type
         typedef typename IA::size_type size_type;
@@ -3808,26 +3735,16 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
         typedef T &reference;
 #else
-        typedef sparse_matrix_element<coordinate_matrix<T, F, IB, IA, TA> > reference;
+        typedef sparse_matrix_element<self_type> reference;
 #endif
         typedef IA index_array_type;
         typedef TA value_array_type;
-    private:
-        typedef T &true_reference;
-        typedef T *pointer;
-        typedef F functor_type;
-        typedef coordinate_matrix<T, F, IB, IA, TA> self_type;
-    public:
-#ifndef BOOST_UBLAS_CT_REFERENCE_BASE_TYPEDEFS
-        typedef const matrix_const_reference<const self_type> const_closure_type;
-#else
         typedef const matrix_reference<const self_type> const_closure_type;
-#endif
         typedef matrix_reference<self_type> closure_type;
         typedef coordinate_vector<T, IB, IA, TA> vector_temporary_type;
         typedef self_type matrix_temporary_type;
         typedef sparse_tag storage_category;
-        typedef typename F::orientation_category orientation_category;
+        typedef typename L::orientation_category orientation_category;
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
@@ -3861,7 +3778,7 @@ namespace boost { namespace numeric { namespace ublas {
             filled_ (0),
             sorted_ (true), index1_data_ (non_zeros_),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
         }
 
         // Accessors
@@ -3960,15 +3877,15 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         pointer find_element (size_type i, size_type j) {
             sort ();
-            size_type element1 (functor_type::element1 (i, size1_, j, size2_));
-            size_type element2 (functor_type::element2 (i, size1_, j, size2_));
-            vector_const_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
-            vector_const_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            size_type element1 (layout_type::element1 (i, size1_, j, size2_));
+            size_type element2 (layout_type::element2 (i, size1_, j, size2_));
+            vector_const_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            vector_const_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
             if (itv_begin == itv_end)
                 return 0;
-            const_iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-            const_iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
-            const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            const_subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+            const_subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+            const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it == it_end || *it != k_based (element2))
                 return 0;
             return &value_data () [it - index2_data ().begin ()];
@@ -3979,15 +3896,15 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         const_reference at_element (size_type i, size_type j) const {
             sort ();
-            size_type element1 (functor_type::element1 (i, size1_, j, size2_));
-            size_type element2 (functor_type::element2 (i, size1_, j, size2_));
-            vector_const_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
-            vector_const_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            size_type element1 (layout_type::element1 (i, size1_, j, size2_));
+            size_type element2 (layout_type::element2 (i, size1_, j, size2_));
+            vector_const_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            vector_const_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
             if (itv_begin == itv_end)
                 return zero_;
-            const_iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-            const_iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
-            const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            const_subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+            const_subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+            const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it == it_end || *it != k_based (element2))
                 return zero_;
             return value_data () [it - index2_data ().begin ()];
@@ -3995,19 +3912,19 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         true_reference at_element (size_type i, size_type j) {
             sort ();
-            size_type element1 (functor_type::element1 (i, size1_, j, size2_));
-            size_type element2 (functor_type::element2 (i, size1_, j, size2_));
-            vector_const_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
-            vector_const_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            size_type element1 (layout_type::element1 (i, size1_, j, size2_));
+            size_type element2 (layout_type::element2 (i, size1_, j, size2_));
+            vector_const_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            vector_const_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
             if (itv_begin == itv_end) {
                 insert (i, j, value_type (0));
                 sort ();
                 itv_begin = detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ());
                 itv_end = detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ());
             }
-            const_iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-            const_iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
-            const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            const_subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+            const_subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+            const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it == it_end || *it != k_based (element2)) {
                 insert (i, j, value_type (0));
                 sort ();
@@ -4065,7 +3982,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_matrix &assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -4078,7 +3995,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_matrix &plus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_plus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_plus_assign> (*this, ae);
             return *this;
         }
         template<class AE>
@@ -4091,19 +4008,19 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_matrix &minus_assign (const matrix_expression<AE> &ae) {
-            matrix_assign (scalar_minus_assign<true_reference, BOOST_UBLAS_TYPENAME AE::value_type> (), *this, ae);
+            matrix_assign<scalar_minus_assign> (*this, ae);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         coordinate_matrix& operator *= (const AT &at) {
-            matrix_assign_scalar (scalar_multiplies_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_multiplies_assign> (*this, at);
             return *this;
         }
         template<class AT>
         BOOST_UBLAS_INLINE
         coordinate_matrix& operator /= (const AT &at) {
-            matrix_assign_scalar (scalar_divides_assign<true_reference, AT> (), *this, at);
+            matrix_assign_scalar<scalar_divides_assign> (*this, at);
             return *this;
         }
 
@@ -4121,12 +4038,10 @@ namespace boost { namespace numeric { namespace ublas {
                 value_data ().swap (m.value_data ());
             }
         }
-#ifndef BOOST_UBLAS_NO_MEMBER_FRIENDS
         BOOST_UBLAS_INLINE
         friend void swap (coordinate_matrix &m1, coordinate_matrix &m2) {
             m1.swap (m2);
         }
-#endif
 
         // Sorting and remove duplicates
         BOOST_UBLAS_INLINE
@@ -4145,8 +4060,8 @@ namespace boost { namespace numeric { namespace ublas {
         void push_back (size_type i, size_type j, const_reference t) {
             if (filled_ >= non_zeros_)
                 reserve (2 * non_zeros_, true);
-            size_type element1 = functor_type::element1 (i, size1_, j, size2_);
-            size_type element2 = functor_type::element2 (i, size1_, j, size2_);
+            size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             if (filled_ == 0 ||
                 index1_data () [filled_ - 1] < k_based (element1) ||
                 (index1_data () [filled_ - 1] == k_based (element1) && index2_data () [filled_ - 1] < k_based (element2))) {
@@ -4162,8 +4077,8 @@ namespace boost { namespace numeric { namespace ublas {
         void insert (size_type i, size_type j, const_reference t) {
             if (filled_ >= non_zeros_)
                 reserve (2 * non_zeros_, true);
-            size_type element1 = functor_type::element1 (i, size1_, j, size2_);
-            size_type element2 = functor_type::element2 (i, size1_, j, size2_);
+            size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             ++ filled_;
             index1_data () [filled_ - 1] = k_based (element1);
             index2_data () [filled_ - 1] = k_based (element2);
@@ -4177,17 +4092,17 @@ namespace boost { namespace numeric { namespace ublas {
         }
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
-            size_type element1 = functor_type::element1 (i, size1_, j, size2_);
-            size_type element2 = functor_type::element2 (i, size1_, j, size2_);
+            size_type element1 = layout_type::element1 (i, size1_, j, size2_);
+            size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             sort ();
-            vector_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
-            vector_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
-            iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-            iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
-            iterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
+            vector_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            vector_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (element1), std::less<size_type> ()));
+            subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+            subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+            subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (element2), std::less<size_type> ()));
             if (it != it_end && *it == k_based (element2)) {
                 difference_type n = it - index2_data ().begin ();
-                vector_iterator_type itv (index1_data ().begin () + n);
+                vector_subiterator_type itv (index1_data ().begin () + n);
                 std::copy (itv + 1, index1_data ().begin () + filled_, itv);
                 std::copy (it + 1, index2_data ().begin () + filled_, it);
                 typename value_array_type::iterator itt (value_data ().begin () + n);
@@ -4203,50 +4118,42 @@ namespace boost { namespace numeric { namespace ublas {
         // Iterator types
     private:
         // Use index array iterator
-        typedef typename IA::const_iterator vector_const_iterator_type;
-        typedef typename IA::iterator vector_iterator_type;
-        typedef typename IA::const_iterator const_iterator_type;
-        typedef typename IA::iterator iterator_type;
+        typedef typename IA::const_iterator vector_const_subiterator_type;
+        typedef typename IA::iterator vector_subiterator_type;
+        typedef typename IA::const_iterator const_subiterator_type;
+        typedef typename IA::iterator subiterator_type;
 
     public:
         class const_iterator1;
         class iterator1;
         class const_iterator2;
         class iterator2;
-#ifdef BOOST_MSVC_STD_ITERATOR
-        typedef reverse_iterator_base1<const_iterator1, value_type, const_reference> const_reverse_iterator1;
-        typedef reverse_iterator_base1<iterator1, value_type, reference> reverse_iterator1;
-        typedef reverse_iterator_base2<const_iterator2, value_type, const_reference> const_reverse_iterator2;
-        typedef reverse_iterator_base2<iterator2, value_type, reference> reverse_iterator2;
-#else
         typedef reverse_iterator_base1<const_iterator1> const_reverse_iterator1;
         typedef reverse_iterator_base1<iterator1> reverse_iterator1;
         typedef reverse_iterator_base2<const_iterator2> const_reverse_iterator2;
         typedef reverse_iterator_base2<iterator2> reverse_iterator2;
-#endif
 
         // Element lookup
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) const {
             sort ();
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_const_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
-                vector_const_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_const_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                vector_const_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
 
-                const_iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-                const_iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+                const_subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+                const_subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
 
-                const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
-                vector_const_iterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
+                const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                vector_const_subiterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
                 if (rank == 0)
                     return const_iterator1 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return const_iterator1 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == it_end)
                             return const_iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*it);
@@ -4256,7 +4163,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ i;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return const_iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*(it - 1));
@@ -4268,27 +4175,26 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator1 find1 (int rank, size_type i, size_type j, int direction = 1) {
             sort ();
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
-                vector_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                vector_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
 
-                iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-                iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+                subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+                subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
 
-                iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
-                vector_iterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
+                subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                vector_subiterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
                 if (rank == 0)
                     return iterator1 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return iterator1 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == it_end)
                             return iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*it);
@@ -4298,7 +4204,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ i;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast1 ()) {
+                    if (layout_type::fast1 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return iterator1 (*this, rank, i, j, itv, it);
                         i = zero_based (*(it - 1));
@@ -4310,27 +4216,26 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) const {
             sort ();
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_const_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
-                vector_const_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_const_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                vector_const_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
 
-                const_iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-                const_iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+                const_subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+                const_subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
 
-                const_iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
-                vector_const_iterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
+                const_subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                vector_const_subiterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
                 if (rank == 0)
                     return const_iterator2 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return const_iterator2 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == it_end)
                             return const_iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*it);
@@ -4340,7 +4245,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ j;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return const_iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*(it - 1));
@@ -4352,27 +4257,26 @@ namespace boost { namespace numeric { namespace ublas {
                 }
             }
         }
-        // This function seems to be big. So we do not let the compiler inline it.
-        // BOOST_UBLAS_INLINE
+        // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator2 find2 (int rank, size_type i, size_type j, int direction = 1) {
             sort ();
             for (;;) {
-                size_type address1 (functor_type::address1 (i, size1_, j, size2_));
-                size_type address2 (functor_type::address2 (i, size1_, j, size2_));
-                vector_iterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
-                vector_iterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                size_type address1 (layout_type::address1 (i, size1_, j, size2_));
+                size_type address2 (layout_type::address2 (i, size1_, j, size2_));
+                vector_subiterator_type itv_begin (detail::lower_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
+                vector_subiterator_type itv_end (detail::upper_bound (index1_data ().begin (), index1_data ().begin () + filled_, k_based (address1), std::less<size_type> ()));
 
-                iterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
-                iterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
+                subiterator_type it_begin (index2_data ().begin () + (itv_begin - index1_data ().begin ()));
+                subiterator_type it_end (index2_data ().begin () + (itv_end - index1_data ().begin ()));
 
-                iterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
-                vector_iterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
+                subiterator_type it (detail::lower_bound (it_begin, it_end, k_based (address2), std::less<size_type> ()));
+                vector_subiterator_type itv (index1_data ().begin () + (it - index2_data ().begin ()));
                 if (rank == 0)
                     return iterator2 (*this, rank, i, j, itv, it);
                 if (it != it_end && zero_based (*it) == address2)
                     return iterator2 (*this, rank, i, j, itv, it);
                 if (direction > 0) {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == it_end)
                             return iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*it);
@@ -4382,7 +4286,7 @@ namespace boost { namespace numeric { namespace ublas {
                         ++ j;
                     }
                 } else /* if (direction < 0)  */ {
-                    if (functor_type::fast2 ()) {
+                    if (layout_type::fast2 ()) {
                         if (it == index2_data ().begin () + zero_based (*itv))
                             return iterator2 (*this, rank, i, j, itv, it);
                         j = zero_based (*(it - 1));
@@ -4402,14 +4306,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::const_reference reference;
             typedef const typename coordinate_matrix::pointer pointer;
-#endif
+
             typedef const_iterator2 dual_iterator_type;
             typedef const_reverse_iterator2 dual_reverse_iterator_type;
 
@@ -4418,7 +4319,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator1 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const vector_const_iterator_type &itv, const const_iterator_type &it):
+            const_iterator1 (const self_type &m, int rank, size_type i, size_type j, const vector_const_subiterator_type &itv, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator1 (const iterator1 &it):
@@ -4427,7 +4328,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else {
                     i_ = index1 () + 1;
@@ -4438,7 +4339,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else {
                     i_ = index1 () - 1;
@@ -4498,8 +4399,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -4508,8 +4409,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -4543,8 +4444,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_const_iterator_type itv_;
-            const_iterator_type it_;
+            vector_const_subiterator_type itv_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -4562,12 +4463,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator1, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::true_reference reference;
             typedef typename coordinate_matrix::pointer pointer;
-#endif
+
             typedef iterator2 dual_iterator_type;
             typedef reverse_iterator2 dual_reverse_iterator_type;
 
@@ -4576,13 +4476,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator1 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator1 (self_type &m, int rank, size_type i, size_type j, const vector_iterator_type &itv, const iterator_type &it):
+            iterator1 (self_type &m, int rank, size_type i, size_type j, const vector_subiterator_type &itv, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator1 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     ++ it_;
                 else {
                     i_ = index1 () + 1;
@@ -4593,7 +4493,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator1 &operator -- () {
-                if (rank_ == 1 && functor_type::fast1 ())
+                if (rank_ == 1 && layout_type::fast1 ())
                     -- it_;
                 else {
                     i_ = index1 () - 1;
@@ -4653,8 +4553,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -4663,8 +4563,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find1 (0, (*this) ().size1 (), j_), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -4698,8 +4598,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_iterator_type itv_;
-            iterator_type it_;
+            vector_subiterator_type itv_;
+            subiterator_type it_;
 
             friend class const_iterator1;
         };
@@ -4719,14 +4619,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                const_iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifdef BOOST_MSVC_STD_ITERATOR
-            typedef const_reference reference;
-#else
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::const_reference reference;
             typedef const typename coordinate_matrix::pointer pointer;
-#endif
+
             typedef const_iterator1 dual_iterator_type;
             typedef const_reverse_iterator1 dual_reverse_iterator_type;
 
@@ -4735,7 +4632,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_iterator2 ():
                 container_const_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const vector_const_iterator_type itv, const const_iterator_type &it):
+            const_iterator2 (const self_type &m, int rank, size_type i, size_type j, const vector_const_subiterator_type itv, const const_subiterator_type &it):
                 container_const_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
             BOOST_UBLAS_INLINE
             const_iterator2 (const iterator2 &it):
@@ -4744,7 +4641,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Arithmetic
             BOOST_UBLAS_INLINE
             const_iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else {
                     j_ = index2 () + 1;
@@ -4755,7 +4652,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             const_iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else {
                     j_ = index2 () - 1;
@@ -4815,8 +4712,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -4825,8 +4722,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -4860,8 +4757,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_const_iterator_type itv_;
-            const_iterator_type it_;
+            vector_const_subiterator_type itv_;
+            const_subiterator_type it_;
         };
 
         BOOST_UBLAS_INLINE
@@ -4879,12 +4776,11 @@ namespace boost { namespace numeric { namespace ublas {
                                                iterator2, value_type> {
         public:
             typedef sparse_bidirectional_iterator_tag iterator_category;
-#ifndef BOOST_MSVC_STD_ITERATOR
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::true_reference reference;
             typedef typename coordinate_matrix::pointer pointer;
-#endif
+
             typedef iterator1 dual_iterator_type;
             typedef reverse_iterator1 dual_reverse_iterator_type;
 
@@ -4893,13 +4789,13 @@ namespace boost { namespace numeric { namespace ublas {
             iterator2 ():
                 container_reference<self_type> (), rank_ (), i_ (), j_ (), itv_ (), it_ () {}
             BOOST_UBLAS_INLINE
-            iterator2 (self_type &m, int rank, size_type i, size_type j, const vector_iterator_type &itv, const iterator_type &it):
+            iterator2 (self_type &m, int rank, size_type i, size_type j, const vector_subiterator_type &itv, const subiterator_type &it):
                 container_reference<self_type> (m), rank_ (rank), i_ (i), j_ (j), itv_ (itv), it_ (it) {}
 
             // Arithmetic
             BOOST_UBLAS_INLINE
             iterator2 &operator ++ () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     ++ it_;
                 else {
                     j_ = index2 () + 1;
@@ -4910,7 +4806,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             BOOST_UBLAS_INLINE
             iterator2 &operator -- () {
-                if (rank_ == 1 && functor_type::fast2 ())
+                if (rank_ == 1 && layout_type::fast2 ())
                     -- it_;
                 else {
                     j_ = index2 ();
@@ -4970,8 +4866,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index1 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
-                    return functor_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size1 (), bad_index ());
+                    return layout_type::index1 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return i_;
                 }
@@ -4980,8 +4876,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type index2 () const {
                 BOOST_UBLAS_CHECK (*this != (*this) ().find2 (0, i_, (*this) ().size2 ()), bad_index ());
                 if (rank_ == 1) {
-                    BOOST_UBLAS_CHECK (functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
-                    return functor_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
+                    BOOST_UBLAS_CHECK (layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_)) < (*this) ().size2 (), bad_index ());
+                    return layout_type::index2 ((*this) ().zero_based (*itv_), (*this) ().zero_based (*it_));
                 } else {
                     return j_;
                 }
@@ -5015,8 +4911,8 @@ namespace boost { namespace numeric { namespace ublas {
             int rank_;
             size_type i_;
             size_type j_;
-            vector_iterator_type itv_;
-            iterator_type it_;
+            vector_subiterator_type itv_;
+            subiterator_type it_;
 
             friend class const_iterator2;
         };
@@ -5094,12 +4990,8 @@ namespace boost { namespace numeric { namespace ublas {
         friend class const_iterator2;
     };
 
-    template<class T, class F, std::size_t IB, class IA, class TA>
-    const typename coordinate_matrix<T, F, IB, IA, TA>::value_type coordinate_matrix<T, F, IB, IA, TA>::zero_
-#ifdef BOOST_UBLAS_STATIC_OLD_INIT
-        = BOOST_UBLAS_TYPENAME coordinate_matrix<T, F, IB, IA, TA>::value_type
-#endif
-        (0);
+    template<class T, class L, std::size_t IB, class IA, class TA>
+    const typename coordinate_matrix<T, L, IB, IA, TA>::value_type coordinate_matrix<T, L, IB, IA, TA>::zero_ (0);
 
 }}}
 

@@ -17,19 +17,23 @@
 #ifndef BOOST_UBLAS_OPERATION_SPARSE_H
 #define BOOST_UBLAS_OPERATION_SPARSE_H
 
+#include <boost/numeric/ublas/config.hpp>
+#include <boost/numeric/ublas/traits.hpp>
+
 // These scaled additions were borrowed from MTL unashamedly.
 // But Alexei Novakov had a lot of ideas to improve these. Thanks.
 
 namespace boost { namespace numeric { namespace ublas {
 
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M &
     sparse_prod (const matrix_expression<E1> &e1,
                  const matrix_expression<E2> &e2,
-                 M &m, const F &f,
+                 M &m, TRI,
                  row_major_tag) {
         typedef M matrix_type;
+        typedef TRI triangular_restriction;
         typedef const E1 expression1_type;
         typedef const E2 expression2_type;
         typedef typename M::size_type size_type;
@@ -40,7 +44,7 @@ namespace boost { namespace numeric { namespace ublas {
         matrix<value_type, row_major> cm (m.size1 (), m.size2 ());
         typedef typename type_traits<value_type>::real_type real_type;
         real_type merrorbound (norm_1 (m) + norm_1 (e1) * norm_1 (e2));
-        indexing_matrix_assign (scalar_assign<typename matrix<value_type, row_major>::reference, value_type> (), cm, prod (e1, e2), row_major_tag ());
+        indexing_matrix_assign<scalar_assign> (cm, prod (e1, e2), row_major_tag ());
 #endif
         typename expression1_type::const_iterator1 it1 (e1 ().begin1 ());
         typename expression1_type::const_iterator1 it1_end (e1 ().end1 ());
@@ -74,7 +78,7 @@ namespace boost { namespace numeric { namespace ublas {
                     // m.push_back (it1.index1 (), j, temporary (j));
                     // FIXME: What to do with adaptors?
                     // m.insert (it1.index1 (), j, temporary (j));
-                    if (f.other (it1.index1 (), j))
+                    if (triangular_restriction::other (it1.index1 (), j))
                         m (it1.index1 (), j) = temporary (j);
                     temporary (j) = value_type (0);
                 }
@@ -87,14 +91,15 @@ namespace boost { namespace numeric { namespace ublas {
         return m;
     }
 
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M &
     sparse_prod (const matrix_expression<E1> &e1,
                  const matrix_expression<E2> &e2,
-                 M &m, const F &f,
+                 M &m, TRI,
                  column_major_tag) {
         typedef M matrix_type;
+        typedef TRI triangular_restriction;
         typedef const E1 expression1_type;
         typedef const E2 expression2_type;
         typedef typename M::size_type size_type;
@@ -105,7 +110,7 @@ namespace boost { namespace numeric { namespace ublas {
         matrix<value_type, column_major> cm (m.size1 (), m.size2 ());
         typedef typename type_traits<value_type>::real_type real_type;
         real_type merrorbound (norm_1 (m) + norm_1 (e1) * norm_1 (e2));
-        indexing_matrix_assign (scalar_assign<typename matrix<value_type, column_major>::reference, value_type> (), cm, prod (e1, e2), column_major_tag ());
+        indexing_matrix_assign<scalar_assign> (cm, prod (e1, e2), column_major_tag ());
 #endif
         typename expression2_type::const_iterator2 it2 (e2 ().begin2 ());
         typename expression2_type::const_iterator2 it2_end (e2 ().end2 ());
@@ -139,7 +144,7 @@ namespace boost { namespace numeric { namespace ublas {
                     // m.push_back (i, it2.index2 (), temporary (i));
                     // FIXME: What to do with adaptors?
                     // m.insert (i, it2.index2 (), temporary (i));
-                    if (f.other (i, it2.index2 ()))
+                    if (triangular_restriction::other (i, it2.index2 ()))
                         m (i, it2.index2 ()) = temporary (i);
                     temporary (i) = value_type (0);
                 }
@@ -153,31 +158,33 @@ namespace boost { namespace numeric { namespace ublas {
     }
 
     // Dispatcher
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M &
     sparse_prod (const matrix_expression<E1> &e1,
                  const matrix_expression<E2> &e2,
-                 M &m, const F &f, bool init = true) {
+                 M &m, TRI, bool init = true) {
         typedef typename M::value_type value_type;
+        typedef TRI triangular_restriction;
         typedef typename M::orientation_category orientation_category;
 
         if (init)
             m.assign (zero_matrix<value_type> (e1 ().size1 (), e2 ().size2 ()));
-        return sparse_prod (e1, e2, m, f, orientation_category ());
+        return sparse_prod (e1, e2, m, triangular_restriction (), orientation_category ());
     }
     template<class M, class E1, class E2, class F>
     BOOST_UBLAS_INLINE
     M
     sparse_prod (const matrix_expression<E1> &e1,
                  const matrix_expression<E2> &e2,
-                 const F &f) {
+                 TRI) {
         typedef M matrix_type;
+        typedef TRI triangular_restriction;
 
         matrix_type m (e1 ().size1 (), e2 ().size2 ());
         // FIXME: needed for c_matrix?!
-        // return sparse_prod (e1, e2, m, f, false);
-        return sparse_prod (e1, e2, m, f, true);
+        // return sparse_prod (e1, e2, m, triangular_restriction (), false);
+        return sparse_prod (e1, e2, m, triangular_restriction (), true);
     }
     template<class M, class E1, class E2>
     BOOST_UBLAS_INLINE
