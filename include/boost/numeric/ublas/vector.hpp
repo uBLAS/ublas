@@ -246,7 +246,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator, value_type, difference_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename vector::difference_type difference_type;
             typedef typename vector::value_type value_type;
             typedef typename vector::const_reference reference;
@@ -346,7 +345,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator, value_type, difference_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename vector::difference_type difference_type;
             typedef typename vector::value_type value_type;
             typedef typename vector::reference reference;
@@ -612,7 +610,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator, value_type> {
         public:
-//FIXME            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename zero_vector::difference_type difference_type;
             typedef typename zero_vector::value_type value_type;
             typedef typename zero_vector::const_reference reference;
@@ -808,7 +805,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator, value_type> {
         public:
-//FIXME            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename unit_vector::difference_type difference_type;
             typedef typename unit_vector::value_type value_type;
             typedef typename unit_vector::const_reference reference;
@@ -1013,7 +1009,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename scalar_vector::difference_type difference_type;
             typedef typename scalar_vector::value_type value_type;
             typedef typename scalar_vector::const_reference reference;
@@ -1344,7 +1339,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename c_vector::difference_type difference_type;
             typedef typename c_vector::value_type value_type;
             typedef typename c_vector::const_reference reference;
@@ -1445,7 +1439,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename c_vector::difference_type difference_type;
             typedef typename c_vector::value_type value_type;
             typedef typename c_vector::reference reference;

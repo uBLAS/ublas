@@ -245,7 +245,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename const_subiterator_type::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename const_subiterator_type::iterator_category iterator_category;
             typedef typename const_subiterator_type::value_type value_type;
             typedef typename const_subiterator_type::difference_type difference_type;
             typedef typename const_subiterator_type::reference reference;
@@ -342,7 +341,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename subiterator_type::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename subiterator_type::iterator_category iterator_category;
             typedef typename subiterator_type::value_type value_type;
             typedef typename subiterator_type::difference_type difference_type;
             typedef typename subiterator_type::reference reference;
@@ -700,7 +698,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename const_subiterator_type::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename const_subiterator_type::iterator_category iterator_category;
             typedef typename const_subiterator_type::value_type value_type;
             typedef typename const_subiterator_type::difference_type difference_type;
             typedef typename const_subiterator_type::reference reference;
@@ -797,7 +794,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename subiterator_type::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename subiterator_type::iterator_category iterator_category;
             typedef typename subiterator_type::value_type value_type;
             typedef typename subiterator_type::difference_type difference_type;
             typedef typename subiterator_type::reference reference;
@@ -1143,12 +1139,13 @@ namespace boost { namespace numeric { namespace ublas {
 
         class const_iterator:
             public container_const_reference<matrix_vector_range>,
-            public iterator_base_traits<typename iterator_restrict_traits<typename M::const_iterator1::iterator_category,
-                                                                          typename M::const_iterator2::iterator_category>::iterator_category>::template
+            public iterator_base_traits<typename M::const_iterator1::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename iterator_restrict_traits<typename M::const_iterator1::iterator_category,
-                                                      typename M::const_iterator2::iterator_category>::iterator_category iterator_category;
+            // FIXME Iterator can never be different code was:
+            // typename iterator_restrict_traits<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::iterator_category>
+            BOOST_STATIC_ASSERT ((boost::is_same<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::value ));
+
             typedef typename matrix_vector_range::value_type value_type;
             typedef typename matrix_vector_range::difference_type difference_type;
             typedef typename matrix_vector_range::const_reference reference;
@@ -1246,12 +1243,13 @@ namespace boost { namespace numeric { namespace ublas {
 
         class iterator:
             public container_reference<matrix_vector_range>,
-            public iterator_base_traits<typename iterator_restrict_traits<typename M::iterator1::iterator_category,
-                                                                          typename M::iterator2::iterator_category>::iterator_category>::template
+            public iterator_base_traits<typename M::iterator1::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename iterator_restrict_traits<typename M::iterator1::iterator_category,
-                                                      typename M::iterator2::iterator_category>::iterator_category iterator_category;
+            // FIXME Iterator can never be different code was:
+            // typename iterator_restrict_traits<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::iterator_category>
+            BOOST_STATIC_ASSERT ((boost::is_same<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::value ));
+
             typedef typename matrix_vector_range::value_type value_type;
             typedef typename matrix_vector_range::difference_type difference_type;
             typedef typename matrix_vector_range::reference reference;
@@ -1597,12 +1595,13 @@ namespace boost { namespace numeric { namespace ublas {
 
         class const_iterator:
             public container_const_reference<matrix_vector_slice>,
-            public iterator_base_traits<typename iterator_restrict_traits<typename M::const_iterator1::iterator_category,
-                                                                          typename M::const_iterator2::iterator_category>::iterator_category>::template
+            public iterator_base_traits<typename M::const_iterator1::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename iterator_restrict_traits<typename M::const_iterator1::iterator_category,
-                                                      typename M::const_iterator2::iterator_category>::iterator_category iterator_category;
+            // FIXME Iterator can never be different code was:
+            // typename iterator_restrict_traits<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::iterator_category>
+            BOOST_STATIC_ASSERT ((boost::is_same<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::value ));
+
             typedef typename matrix_vector_slice::value_type value_type;
             typedef typename matrix_vector_slice::difference_type difference_type;
             typedef typename matrix_vector_slice::const_reference reference;
@@ -1700,12 +1699,13 @@ namespace boost { namespace numeric { namespace ublas {
 
         class iterator:
             public container_reference<matrix_vector_slice>,
-            public iterator_base_traits<typename iterator_restrict_traits<typename M::iterator1::iterator_category,
-                                                                          typename M::iterator2::iterator_category>::iterator_category>::template
+            public iterator_base_traits<typename M::iterator1::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename iterator_restrict_traits<typename M::iterator1::iterator_category,
-                                                      typename M::iterator2::iterator_category>::iterator_category iterator_category;
+            // FIXME Iterator can never be different code was:
+            // typename iterator_restrict_traits<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::iterator_category>
+            BOOST_STATIC_ASSERT ((boost::is_same<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::value ));
+
             typedef typename matrix_vector_slice::value_type value_type;
             typedef typename matrix_vector_slice::difference_type difference_type;
             typedef typename matrix_vector_slice::reference reference;
@@ -2049,12 +2049,13 @@ namespace boost { namespace numeric { namespace ublas {
 
         class const_iterator:
             public container_const_reference<matrix_vector_indirect>,
-            public iterator_base_traits<typename iterator_restrict_traits<typename M::const_iterator1::iterator_category,
-                                                                          typename M::const_iterator2::iterator_category>::iterator_category>::template
+            public iterator_base_traits<typename M::const_iterator1::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename iterator_restrict_traits<typename M::const_iterator1::iterator_category,
-                                                      typename M::const_iterator2::iterator_category>::iterator_category iterator_category;
+            // FIXME Iterator can never be different code was:
+            // typename iterator_restrict_traits<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::iterator_category>
+            BOOST_STATIC_ASSERT ((boost::is_same<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::value ));
+
             typedef typename matrix_vector_indirect::value_type value_type;
             typedef typename matrix_vector_indirect::difference_type difference_type;
             typedef typename matrix_vector_indirect::const_reference reference;
@@ -2152,12 +2153,13 @@ namespace boost { namespace numeric { namespace ublas {
 
         class iterator:
             public container_reference<matrix_vector_indirect>,
-            public iterator_base_traits<typename iterator_restrict_traits<typename M::iterator1::iterator_category,
-                                                                          typename M::iterator2::iterator_category>::iterator_category>::template
+            public iterator_base_traits<typename M::iterator1::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename iterator_restrict_traits<typename M::iterator1::iterator_category,
-                                                      typename M::iterator2::iterator_category>::iterator_category iterator_category;
+            // FIXME Iterator can never be different code was:
+            // typename iterator_restrict_traits<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::iterator_category>
+            BOOST_STATIC_ASSERT ((boost::is_same<typename M::const_iterator1::iterator_category, typename M::const_iterator2::iterator_category>::value ));
+
             typedef typename matrix_vector_indirect::value_type value_type;
             typedef typename matrix_vector_indirect::difference_type difference_type;
             typedef typename matrix_vector_indirect::reference reference;
@@ -2550,7 +2552,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename const_subiterator1_type::iterator_category>::template
                         iterator_base<const_iterator1, value_type>::type {
         public:
-            typedef typename const_subiterator1_type::iterator_category iterator_category;
             typedef typename const_subiterator1_type::value_type value_type;
             typedef typename const_subiterator1_type::difference_type difference_type;
             typedef typename const_subiterator1_type::reference reference;
@@ -2685,7 +2686,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename subiterator1_type::iterator_category>::template
                         iterator_base<iterator1, value_type>::type {
         public:
-            typedef typename subiterator1_type::iterator_category iterator_category;
             typedef typename subiterator1_type::value_type value_type;
             typedef typename subiterator1_type::difference_type difference_type;
             typedef typename subiterator1_type::reference reference;
@@ -2819,7 +2819,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename const_subiterator2_type::iterator_category>::template
                         iterator_base<const_iterator2, value_type>::type {
         public:
-            typedef typename const_subiterator2_type::iterator_category iterator_category;
             typedef typename const_subiterator2_type::value_type value_type;
             typedef typename const_subiterator2_type::difference_type difference_type;
             typedef typename const_subiterator2_type::reference reference;
@@ -2954,7 +2953,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename subiterator2_type::iterator_category>::template
                         iterator_base<iterator2, value_type>::type {
         public:
-            typedef typename subiterator2_type::iterator_category iterator_category;
             typedef typename subiterator2_type::value_type value_type;
             typedef typename subiterator2_type::difference_type difference_type;
             typedef typename subiterator2_type::reference reference;
@@ -3427,7 +3425,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::const_iterator1::iterator_category>::template
                         iterator_base<const_iterator1, value_type>::type {
         public:
-            typedef typename M::const_iterator1::iterator_category iterator_category;
             typedef typename M::const_iterator1::value_type value_type;
             typedef typename M::const_iterator1::difference_type difference_type;
             typedef typename M::const_reference reference;    //FIXME due to indexing access
@@ -3566,7 +3563,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::iterator1::iterator_category>::template
                         iterator_base<iterator1, value_type>::type {
         public:
-            typedef typename M::iterator1::iterator_category iterator_category;
             typedef typename M::iterator1::value_type value_type;
             typedef typename M::iterator1::difference_type difference_type;
             typedef typename M::reference reference;    //FIXME due to indexing access
@@ -3704,7 +3700,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::const_iterator2::iterator_category>::template
                         iterator_base<const_iterator2, value_type>::type {
         public:
-            typedef typename M::const_iterator2::iterator_category iterator_category;
             typedef typename M::const_iterator2::value_type value_type;
             typedef typename M::const_iterator2::difference_type difference_type;
             typedef typename M::const_reference reference;    //FIXME due to indexing access
@@ -3843,7 +3838,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::iterator2::iterator_category>::template
                         iterator_base<iterator2, value_type>::type {
         public:
-            typedef typename M::iterator2::iterator_category iterator_category;
             typedef typename M::iterator2::value_type value_type;
             typedef typename M::iterator2::difference_type difference_type;
             typedef typename M::reference reference;    //FIXME due to indexing access
@@ -4328,7 +4322,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::const_iterator1::iterator_category>::template
                         iterator_base<const_iterator1, value_type>::type {
         public:
-            typedef typename M::const_iterator1::iterator_category iterator_category;
             typedef typename M::const_iterator1::value_type value_type;
             typedef typename M::const_iterator1::difference_type difference_type;
             typedef typename M::const_reference reference;    //FIXME due to indexing access
@@ -4467,7 +4460,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::iterator1::iterator_category>::template
                         iterator_base<iterator1, value_type>::type {
         public:
-            typedef typename M::iterator1::iterator_category iterator_category;
             typedef typename M::iterator1::value_type value_type;
             typedef typename M::iterator1::difference_type difference_type;
             typedef typename M::reference reference;    //FIXME due to indexing access
@@ -4605,7 +4597,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::const_iterator2::iterator_category>::template
                         iterator_base<const_iterator2, value_type>::type {
         public:
-            typedef typename M::const_iterator2::iterator_category iterator_category;
             typedef typename M::const_iterator2::value_type value_type;
             typedef typename M::const_iterator2::difference_type difference_type;
             typedef typename M::const_reference reference;    //FIXME due to indexing access
@@ -4744,7 +4735,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename M::iterator2::iterator_category>::template
                         iterator_base<iterator2, value_type>::type {
         public:
-            typedef typename M::iterator2::iterator_category iterator_category;
             typedef typename M::iterator2::value_type value_type;
             typedef typename M::iterator2::difference_type difference_type;
             typedef typename M::reference reference;    //FIXME due to indexing access

@@ -263,7 +263,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename const_subiterator_type::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename const_subiterator_type::iterator_category iterator_category;
             typedef typename const_subiterator_type::difference_type difference_type;
             typedef typename const_subiterator_type::value_type value_type;
             typedef typename const_subiterator_type::reference reference;
@@ -360,7 +359,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename subiterator_type::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename subiterator_type::iterator_category iterator_category;
             typedef typename subiterator_type::difference_type difference_type;
             typedef typename subiterator_type::value_type value_type;
             typedef typename subiterator_type::reference reference;
@@ -748,7 +746,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename V::const_iterator::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename V::const_iterator::iterator_category iterator_category;
             typedef typename V::const_iterator::difference_type difference_type;
             typedef typename V::const_iterator::value_type value_type;
             typedef typename V::const_reference reference;    //FIXME due to indexing access
@@ -846,7 +843,6 @@ namespace boost { namespace numeric { namespace ublas {
             public iterator_base_traits<typename V::iterator::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename V::iterator::iterator_category iterator_category;
             typedef typename V::iterator::difference_type difference_type;
             typedef typename V::iterator::value_type value_type;
             typedef typename V::reference reference;    //FIXME due to indexing access
@@ -1250,7 +1246,6 @@ return true;
             public iterator_base_traits<typename V::const_iterator::iterator_category>::template
                         iterator_base<const_iterator, value_type>::type {
         public:
-            typedef typename V::const_iterator::iterator_category iterator_category;
             typedef typename V::const_iterator::difference_type difference_type;
             typedef typename V::const_iterator::value_type value_type;
             typedef typename V::const_reference reference;    //FIXME due to indexing access
@@ -1348,7 +1343,6 @@ return true;
             public iterator_base_traits<typename V::iterator::iterator_category>::template
                         iterator_base<iterator, value_type>::type {
         public:
-            typedef typename V::iterator::iterator_category iterator_category;
             typedef typename V::iterator::difference_type difference_type;
             typedef typename V::iterator::value_type value_type;
             typedef typename V::reference reference;    //FIXME due to indexing access

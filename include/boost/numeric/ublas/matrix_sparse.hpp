@@ -618,7 +618,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::const_reference reference;
@@ -769,7 +768,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::true_reference reference;
@@ -919,7 +917,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::const_reference reference;
@@ -1070,7 +1067,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_matrix::value_type value_type;
             typedef typename sparse_matrix::difference_type difference_type;
             typedef typename sparse_matrix::true_reference reference;
@@ -1720,7 +1716,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::const_reference reference;
@@ -1889,7 +1884,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::true_reference reference;
@@ -2057,7 +2051,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::const_reference reference;
@@ -2226,7 +2219,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename sparse_vector_of_sparse_vector::value_type value_type;
             typedef typename sparse_vector_of_sparse_vector::difference_type difference_type;
             typedef typename sparse_vector_of_sparse_vector::true_reference reference;
@@ -3063,7 +3055,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::const_reference reference;
@@ -3220,7 +3211,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::true_reference reference;
@@ -3376,7 +3366,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::const_reference reference;
@@ -3533,7 +3522,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename compressed_matrix::value_type value_type;
             typedef typename compressed_matrix::difference_type difference_type;
             typedef typename compressed_matrix::true_reference reference;
@@ -4348,7 +4336,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::const_reference reference;
@@ -4505,7 +4492,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator1, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::true_reference reference;
@@ -4661,7 +4647,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::const_reference reference;
@@ -4818,7 +4803,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                iterator2, value_type> {
         public:
-            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename coordinate_matrix::value_type value_type;
             typedef typename coordinate_matrix::difference_type difference_type;
             typedef typename coordinate_matrix::true_reference reference;

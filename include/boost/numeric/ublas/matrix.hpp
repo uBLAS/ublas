@@ -328,7 +328,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename matrix::value_type value_type;
             typedef typename matrix::difference_type difference_type;
             typedef typename matrix::const_reference reference;
@@ -470,7 +469,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename matrix::value_type value_type;
             typedef typename matrix::difference_type difference_type;
             typedef typename matrix::reference reference;
@@ -609,7 +607,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename matrix::value_type value_type;
             typedef typename matrix::difference_type difference_type;
             typedef typename matrix::const_reference reference;
@@ -751,7 +748,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename matrix::value_type value_type;
             typedef typename matrix::difference_type difference_type;
             typedef typename matrix::reference reference;
@@ -1237,7 +1233,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename vector_of_vector::value_type value_type;
             typedef typename vector_of_vector::difference_type difference_type;
             typedef typename vector_of_vector::const_reference reference;
@@ -1396,7 +1391,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename vector_of_vector::value_type value_type;
             typedef typename vector_of_vector::difference_type difference_type;
             typedef typename vector_of_vector::reference reference;
@@ -1552,7 +1546,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename vector_of_vector::value_type value_type;
             typedef typename vector_of_vector::difference_type difference_type;
             typedef typename vector_of_vector::const_reference reference;
@@ -1711,7 +1704,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename vector_of_vector::value_type value_type;
             typedef typename vector_of_vector::difference_type difference_type;
             typedef typename vector_of_vector::reference reference;
@@ -2021,7 +2013,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-//FIXME            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename zero_matrix::value_type value_type;
             typedef typename zero_matrix::difference_type difference_type;
             typedef typename zero_matrix::const_reference reference;
@@ -2131,7 +2122,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-//FIXME            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename zero_matrix::value_type value_type;
             typedef typename zero_matrix::difference_type difference_type;
             typedef typename zero_matrix::const_reference reference;
@@ -2397,7 +2387,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-//FIXME            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename identity_matrix::value_type value_type;
             typedef typename identity_matrix::difference_type difference_type;
             typedef typename identity_matrix::const_reference reference;
@@ -2517,7 +2506,6 @@ namespace boost { namespace numeric { namespace ublas {
             public bidirectional_iterator_base<sparse_bidirectional_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-//FIXME            typedef sparse_bidirectional_iterator_tag iterator_category;
             typedef typename identity_matrix::value_type value_type;
             typedef typename identity_matrix::difference_type difference_type;
             typedef typename identity_matrix::const_reference reference;
@@ -2783,7 +2771,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename scalar_matrix::value_type value_type;
             typedef typename scalar_matrix::difference_type difference_type;
             typedef typename scalar_matrix::const_reference reference;
@@ -2925,7 +2912,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename scalar_matrix::value_type value_type;
             typedef typename scalar_matrix::difference_type difference_type;
             typedef typename scalar_matrix::const_reference reference;
@@ -3363,7 +3349,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename c_matrix::difference_type difference_type;
             typedef typename c_matrix::value_type value_type;
             typedef typename c_matrix::const_reference reference;
@@ -3505,7 +3490,7 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator1, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
+
             typedef typename c_matrix::difference_type difference_type;
             typedef typename c_matrix::value_type value_type;
             typedef typename c_matrix::reference reference;
@@ -3644,7 +3629,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename c_matrix::difference_type difference_type;
             typedef typename c_matrix::value_type value_type;
             typedef typename c_matrix::const_reference reference;
@@ -3786,7 +3770,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                iterator2, value_type> {
         public:
-//FIXME            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename c_matrix::difference_type difference_type;
             typedef typename c_matrix::value_type value_type;
             typedef typename c_matrix::reference reference;

@@ -300,7 +300,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator1, value_type> {
         public:
-            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename symmetric_matrix::value_type value_type;
             typedef typename symmetric_matrix::difference_type difference_type;
             typedef typename symmetric_matrix::const_reference reference;
@@ -439,7 +438,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<packed_random_access_iterator_tag,
                                                iterator1, value_type> {
         public:
-            typedef packed_random_access_iterator_tag iterator_category;
             typedef typename symmetric_matrix::value_type value_type;
             typedef typename symmetric_matrix::difference_type difference_type;
             typedef typename symmetric_matrix::reference reference;
@@ -576,7 +574,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<dense_random_access_iterator_tag,
                                                const_iterator2, value_type> {
         public:
-            typedef dense_random_access_iterator_tag iterator_category;
             typedef typename symmetric_matrix::value_type value_type;
             typedef typename symmetric_matrix::difference_type difference_type;
             typedef typename symmetric_matrix::const_reference reference;
@@ -715,7 +712,6 @@ namespace boost { namespace numeric { namespace ublas {
             public random_access_iterator_base<packed_random_access_iterator_tag,
                                                iterator2, value_type> {
         public:
-            typedef packed_random_access_iterator_tag iterator_category;
             typedef typename symmetric_matrix::value_type value_type;
             typedef typename symmetric_matrix::difference_type difference_type;
             typedef typename symmetric_matrix::reference reference;
@@ -1165,11 +1161,10 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_USE_INDEXED_ITERATOR
         class const_iterator1:
             public container_const_reference<symmetric_adaptor>,
-            public random_access_iterator_base<dense_random_access_iterator_tag,
+            public random_access_iterator_base<typename iterator_restrict_traits<
+                                                   typename const_subiterator1_type::iterator_category, dense_random_access_iterator_tag>::iterator_category,
                                                const_iterator1, value_type> {
         public:
-            typedef typename iterator_restrict_traits<typename const_subiterator1_type::iterator_category,
-                                                      dense_random_access_iterator_tag>::iterator_category iterator_category;
             typedef typename const_subiterator1_type::value_type value_type;
             typedef typename const_subiterator1_type::difference_type difference_type;
             typedef typename const_subiterator1_type::reference reference;
@@ -1471,11 +1466,10 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_USE_INDEXED_ITERATOR
         class iterator1:
             public container_reference<symmetric_adaptor>,
-            public random_access_iterator_base<packed_random_access_iterator_tag,
+            public random_access_iterator_base<typename iterator_restrict_traits<
+                                                   typename subiterator1_type::iterator_category, packed_random_access_iterator_tag>::iterator_category,
                                                iterator1, value_type> {
         public:
-            typedef typename iterator_restrict_traits<typename subiterator1_type::iterator_category,
-                                                      packed_random_access_iterator_tag>::iterator_category iterator_category;
             typedef typename subiterator1_type::value_type value_type;
             typedef typename subiterator1_type::difference_type difference_type;
             typedef typename subiterator1_type::reference reference;
@@ -1605,11 +1599,10 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_USE_INDEXED_ITERATOR
         class const_iterator2:
             public container_const_reference<symmetric_adaptor>,
-            public random_access_iterator_base<dense_random_access_iterator_tag,
+            public random_access_iterator_base<typename iterator_restrict_traits<
+                                                   typename const_subiterator2_type::iterator_category, dense_random_access_iterator_tag>::iterator_category,
                                                const_iterator2, value_type> {
         public:
-            typedef typename iterator_restrict_traits<typename const_subiterator2_type::iterator_category,
-                                                      dense_random_access_iterator_tag>::iterator_category iterator_category;
             typedef typename const_subiterator2_type::value_type value_type;
             typedef typename const_subiterator2_type::difference_type difference_type;
             typedef typename const_subiterator2_type::reference reference;
@@ -1911,11 +1904,10 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_USE_INDEXED_ITERATOR
         class iterator2:
             public container_reference<symmetric_adaptor>,
-            public random_access_iterator_base<packed_random_access_iterator_tag,
+            public random_access_iterator_base<typename iterator_restrict_traits<
+                                                   typename subiterator2_type::iterator_category, packed_random_access_iterator_tag>::iterator_category,
                                                iterator2, value_type> {
         public:
-            typedef typename iterator_restrict_traits<typename subiterator2_type::iterator_category,
-                                                      packed_random_access_iterator_tag>::iterator_category iterator_category;
             typedef typename subiterator2_type::value_type value_type;
             typedef typename subiterator2_type::difference_type difference_type;
             typedef typename subiterator2_type::reference reference;
