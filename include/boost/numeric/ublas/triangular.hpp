@@ -47,7 +47,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef matrix_reference<self_type> closure_type;
         typedef vector<T, A> vector_temporary_type;
         typedef matrix<T, L, A> matrix_temporary_type;  // general sub-matrix
-        typedef packed_proxy_tag storage_category;
+        typedef packed_tag storage_category;
         typedef typename L::orientation_category orientation_category;
 
         // Construction and destruction
@@ -155,7 +155,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             // data ().clear ();
             std::fill (data ().begin (), data ().end (), value_type (0));
         }

@@ -361,7 +361,7 @@ namespace boost { namespace numeric { namespace ublas {
         indexing_vector_assign<F> (cv, e);
 #endif
 #endif
-        v.zero ();
+        v.clear ();
         typename E::const_iterator ite (e ().begin ());
         typename E::const_iterator ite_end (e ().end ());
         while (ite != ite_end) {

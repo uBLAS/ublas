@@ -768,7 +768,7 @@ namespace boost { namespace numeric { namespace ublas {
             value_type r = v.insert_element (i, t);
             v.insert_element (i, t) = r;
             // Zeroing
-            v.zero ();
+            v.clear ();
             // Resize
             v.resize (n);
 
@@ -835,7 +835,7 @@ namespace boost { namespace numeric { namespace ublas {
             value_type r = m.insert_element (i, j, t);
             m.insert_element (i, j, t) = r;
             // Zeroing
-            m.zero ();
+            m.clear ();
             // Resize
             m.resize (n, n);
             m.resize (n, n, false);

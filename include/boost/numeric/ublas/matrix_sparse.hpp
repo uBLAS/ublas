@@ -396,7 +396,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             data ().clear ();
         }
 
@@ -1452,7 +1452,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             data ().clear ();
             data_ [layout_type::size1 (size1_, size2_)] = vector_data_value_type ();
         }
@@ -2734,7 +2734,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             filled1_ = 1;
             filled2_ = 0;
             index1_data_ [filled1_ - 1] = k_based (filled2_);
@@ -3998,7 +3998,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             filled_ = 0;
         }
 

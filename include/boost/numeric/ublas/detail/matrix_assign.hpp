@@ -905,7 +905,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::value_type value_type;
         // Sparse type has no numeric constraints to check
 
-        m.zero ();
+        m.clear ();
         typename E::const_iterator1 it1e (e ().begin1 ());
         typename E::const_iterator1 it1e_end (e ().end1 ());
         while (it1e != it1e_end) {
@@ -937,7 +937,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::value_type value_type;
         // Sparse type has no numeric constraints to check
 
-        m.zero ();
+        m.clear ();
         typename E::const_iterator2 it2e (e ().begin2 ());
         typename E::const_iterator2 it2e_end (e ().end2 ());
         while (it2e != it2e_end) {

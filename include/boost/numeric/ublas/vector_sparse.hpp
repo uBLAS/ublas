@@ -387,7 +387,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             data ().clear ();
         }
 
@@ -887,7 +887,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             filled_ = 0;
         }
 
@@ -1438,7 +1438,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Zeroing
         BOOST_UBLAS_INLINE
-        void zero () {
+        void clear () {
             filled_ = 0;
         }
         
