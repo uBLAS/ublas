@@ -553,7 +553,7 @@ namespace boost { namespace numeric { namespace ublas {
             if (data != data_) {
                 if (preserve) {
                     std::copy (data_, data_ + (std::min) (size, size_), data);
-                    std::fill (data + (std::min) (size, size_), data + size, value_type (0));
+                    std::fill (data + (std::min) (size, size_), data + size, value_type ());
                 }
                 if (own_)
                     delete [] data_;
@@ -561,7 +561,7 @@ namespace boost { namespace numeric { namespace ublas {
                 data_ = data;
             }
             else {
-                std::fill (data + (std::min) (size, size_), data + size, value_type (0));
+                std::fill (data + (std::min) (size, size_), data + size, value_type ());
             }
             size_ = size;
         }

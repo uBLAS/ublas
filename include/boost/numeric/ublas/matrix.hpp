@@ -265,19 +265,19 @@ namespace boost { namespace numeric { namespace ublas {
         // Thanks to Kresimir Fresl for spotting this.
         BOOST_UBLAS_INLINE
         void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (data () [functor_type::element (i, size1_, j, size2_)] == value_type (0), bad_index ());
+            BOOST_UBLAS_CHECK (data () [functor_type::element (i, size1_, j, size2_)] == value_type (), bad_index ());
             // data ().insert (data ().begin () + functor_type::element (i, size1_, j, size2_), t);
             data () [functor_type::element (i, size1_, j, size2_)] = t;
         }
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
             // data ().erase (data ().begin () + functor_type::element (i, size1_, j, size2_));
-            data () [functor_type::element (i, size1_, j, size2_)] = value_type (0);
+            data () [functor_type::element (i, size1_, j, size2_)] = value_type ();
         }
         BOOST_UBLAS_INLINE
         void clear () {
             // data ().clear ();
-            std::fill (data ().begin (), data ().end (), value_type (0));
+            std::fill (data ().begin (), data ().end (), value_type ());
         }
 
         // Iterator types
@@ -1203,18 +1203,18 @@ namespace boost { namespace numeric { namespace ublas {
         // Thanks to Kresimir Fresl for spotting this.
         BOOST_UBLAS_INLINE
         void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (data () [functor_type::element1 (i, size1_, j, size2_)] [functor_type::element2 (i, size1_, j, size2_)] == value_type (0), bad_index ());
+            BOOST_UBLAS_CHECK (data () [functor_type::element1 (i, size1_, j, size2_)] [functor_type::element2 (i, size1_, j, size2_)] == value_type (), bad_index ());
             data () [functor_type::element1 (i, size1_, j, size2_)] [functor_type::element2 (i, size1_, j, size2_)] = t; 
         }
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
-            data () [functor_type::element1 (i, size1_, j, size2_)] [functor_type::element2 (i, size1_, j, size2_)] = value_type (0); 
+            data () [functor_type::element1 (i, size1_, j, size2_)] [functor_type::element2 (i, size1_, j, size2_)] = value_type ();
         }
         BOOST_UBLAS_INLINE
         void clear () {
             for (size_type k = 0; k < functor_type::size1 (size1_, size2_); ++ k)
                 // data () [k].clear ();
-                std::fill (data () [k].begin (), data () [k].end (), value_type (0));
+                std::fill (data () [k].begin (), data () [k].end (), value_type ());
         }
 
         // Iterator types
@@ -3373,16 +3373,12 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         c_matrix ():
             size1_ (N), size2_ (M) /* , data_ () */ {
-            for (size_type i = 0; i < size1_; ++ i)
-                std::fill (data_ [i], data_ [i] + size2_, value_type (0));
         }
         BOOST_UBLAS_INLINE
         c_matrix (size_type size1, size_type size2):
             size1_ (size1), size2_ (size2) /* , data_ () */ {
             if (size1_ > N || size2_ > M)
                 bad_size ().raise ();
-            for (size_type i = 0; i < size1_; ++ i)
-                std::fill (data_ [i], data_ [i] + size2_, value_type (0));
         }
         BOOST_UBLAS_INLINE
         c_matrix (const c_matrix &m):
@@ -3545,19 +3541,19 @@ namespace boost { namespace numeric { namespace ublas {
         void insert (size_type i, size_type j, const_reference t) {
             BOOST_UBLAS_CHECK (i < size1_, bad_index ());
             BOOST_UBLAS_CHECK (j < size2_, bad_index ());
-            BOOST_UBLAS_CHECK (data_ [i] [j] == value_type (0), bad_index ());
+            BOOST_UBLAS_CHECK (data_ [i] [j] == value_type (), bad_index ());
             data_ [i] [j] = t;
         }
         BOOST_UBLAS_INLINE
         void erase (size_type i, size_type j) {
             BOOST_UBLAS_CHECK (i < size1_, bad_index ());
             BOOST_UBLAS_CHECK (j < size2_, bad_index ());
-            data_ [i] [j] = value_type (0);
+            data_ [i] [j] = value_type ();
         }
         BOOST_UBLAS_INLINE
         void clear () {
             for (size_type i = 0; i < size1_; ++ i)
-                std::fill (data_ [i], data_ [i] + size2_, value_type (0));
+                std::fill (data_ [i], data_ [i] + size2_, value_type ());
         }
 
         // Iterator types

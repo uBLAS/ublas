@@ -601,7 +601,7 @@ namespace boost { namespace numeric { namespace ublas {
             if (size > capacity_) {
                 pointer data = new value_type [size << 1];
                 std::copy (data_, data_ + (std::min) (size, size_), data);
-                std::fill (data + (std::min) (size, size_), data + size, value_type (0));
+                std::fill (data + (std::min) (size, size_), data + size, value_type ());
                 delete [] data_;
                 capacity_ = size << 1;
                 data_ = data;

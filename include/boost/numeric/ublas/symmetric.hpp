@@ -144,7 +144,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void resize_packed_preserve (size_type size) {
             size_ = BOOST_UBLAS_SAME (size, size);
-            data ().resize (functor1_type::packed_size (size_, size_), value_type (0));
+            data ().resize (functor1_type::packed_size (size_, size_), value_type ());
         }
 
         // Element access
@@ -255,13 +255,13 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (j < size_, bad_index ());
             if (functor1_type::other (i, j)) {
                 size_type k = functor1_type::element (functor2_type (), i, size_, j, size_);
-                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type (0)) ||
+                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type ()) ||
                                    type_traits<value_type>::equals (data () [k], t), bad_index ());
                 // data ().insert (data ().begin () + k, t);
                 data () [k] = t;
             } else {
                 size_type k = functor1_type::element (functor2_type (), j, size_, i, size_);
-                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type (0)) ||
+                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type ()) ||
                                    type_traits<value_type>::equals (data () [k], t), bad_index ());
                 // data ().insert (data ().begin () + k, t);
                 data () [k] = t;
@@ -274,16 +274,16 @@ namespace boost { namespace numeric { namespace ublas {
             if (functor1_type::other (i, j)) {
                 // size_type k = functor1_type::element (functor2_type (), i, size_, j, size_);
                 // data ().erase (data ().begin () + k));
-                data () [functor1_type::element (functor2_type (), i, size_, j, size_)] = value_type (0);
+                data () [functor1_type::element (functor2_type (), i, size_, j, size_)] = value_type ();
             } else {
                 // data ().erase (data ().begin () + k);
-                data () [functor1_type::element (functor2_type (), j, size_, i, size_)] = value_type (0);
+                data () [functor1_type::element (functor2_type (), j, size_, i, size_)] = value_type ();
             }
         }
         BOOST_UBLAS_INLINE
         void clear () {
             // data ().clear ();
-            std::fill (data ().begin (), data ().end (), value_type (0));
+            std::fill (data ().begin (), data ().end (), value_type ());
         }
 
         // Iterator types

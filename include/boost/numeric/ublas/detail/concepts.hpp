@@ -932,7 +932,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef BOOST_UBLAS_TYPENAME promote_traits<BOOST_UBLAS_TYPENAME E1::value_type,
                                                     BOOST_UBLAS_TYPENAME E2::value_type>::promote_type value_type;
         typedef BOOST_UBLAS_TYPENAME type_traits<value_type>::real_type real_type;
-        return norm_inf (e1 - e2) == real_type (0);
+        return norm_inf (e1 - e2) == real_type ();
     }
     template<class E1, class E2>
     bool
@@ -940,7 +940,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef BOOST_UBLAS_TYPENAME promote_traits<BOOST_UBLAS_TYPENAME E1::value_type,
                                                     BOOST_UBLAS_TYPENAME E2::value_type>::promote_type value_type;
         typedef BOOST_UBLAS_TYPENAME type_traits<value_type>::real_type real_type;
-        return norm_inf (e1 - e2) == real_type (0);
+        return norm_inf (e1 - e2) == real_type ();
     }
 
     template<class T>
