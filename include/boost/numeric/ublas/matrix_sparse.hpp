@@ -136,11 +136,35 @@ namespace boost { namespace numeric { namespace ublas {
             return d_;
         }
 
+        // Conversion to reference - may be invalidated
+        BOOST_UBLAS_INLINE
+        value_type& ref () const {
+            pointer p = (*this) ().find_element (i_, i_);
+            if (!p)
+                (*this) ().insert_element (i_, j_, value_type (0));
+            return *p;
+        }
+
     private:
         size_type i_;
         size_type j_;
         mutable value_type d_;
     };
+
+    /*
+     * Generalise explicit reference access
+     */
+    namespace detail {
+        template <class V>
+        struct element_reference<sparse_matrix_element<V> > {
+            typedef typename V::value_type& reference;
+            static reference get_reference (const sparse_matrix_element<V>& sve)
+            {
+                return sve.ref ();
+            }
+        };
+    }
+
 
     template<class M>
     struct type_traits<sparse_matrix_element<M> > {
@@ -342,7 +366,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_subiterator_type it (data ().find (element));
             if (it == data ().end ())
                 return 0;
-            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // broken map
             return &(*it).second;
         }
 
@@ -353,7 +377,7 @@ namespace boost { namespace numeric { namespace ublas {
             const_subiterator_type it (data ().find (element));
             if (it == data ().end ())
                 return zero_;
-            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // broken map
             return (*it).second;
         }
         BOOST_UBLAS_INLINE
@@ -361,7 +385,7 @@ namespace boost { namespace numeric { namespace ublas {
 #ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
             const size_type element = layout_type::element (i, size1_, j, size2_);
             std::pair<subiterator_type, bool> ii (data ().insert (typename array_type::value_type (element, value_type (0))));
-            BOOST_UBLAS_CHECK ((ii.first)->first == element, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((ii.first)->first == element, internal_logic ());   // broken map
             return (ii.first)->second;
 #else
             return reference (*this, i, j);
@@ -374,7 +398,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (!find_element (i, j), bad_index ());		// duplicate element
             const size_type element = layout_type::element (i, size1_, j, size2_);
             std::pair<subiterator_type, bool> ii (data ().insert (typename array_type::value_type (element, t)));
-            BOOST_UBLAS_CHECK ((ii.first)->first == element, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((ii.first)->first == element, internal_logic ());   // broken map
             if (!ii.second)     // existing element
                 (ii.first)->second = t;
             return (ii.first)->second;
@@ -482,7 +506,7 @@ namespace boost { namespace numeric { namespace ublas {
             const size_type element = layout_type::element (i, size1_, j, size2_);
             subiterator_type it (data ().find (element));
             BOOST_UBLAS_CHECK (it != data ().end(), bad_index ());
-            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == element, internal_logic ());   // broken map
             return it->second;
         }
 
@@ -1378,11 +1402,11 @@ namespace boost { namespace numeric { namespace ublas {
             vector_const_subiterator_type itv (data ().find (element1));
             if (itv == data ().end ())
                 return 0;
-            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // broken map
             const_subiterator_type it ((*itv).second.find (element2));
             if (it == (*itv).second.end ())
                 return 0;
-            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == element2, internal_logic ());   // broken map
             return &(*it).second;
         }
 
@@ -1394,11 +1418,11 @@ namespace boost { namespace numeric { namespace ublas {
             vector_const_subiterator_type itv (data ().find (element1));
             if (itv == data ().end ())
                 return zero_;
-            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // broken map
             const_subiterator_type it ((*itv).second.find (element2));
             if (it == (*itv).second.end ())
                 return zero_;
-            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // broken map
             return (*it).second;
         }
         BOOST_UBLAS_INLINE
@@ -1408,7 +1432,7 @@ namespace boost { namespace numeric { namespace ublas {
             const size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             vector_data_value_type& vd (data () [element1]);
             std::pair<subiterator_type, bool> ii (vd.insert (typename array_type::value_type::second_type::value_type (element2, value_type (0))));
-            BOOST_UBLAS_CHECK ((ii.first)->first == element2, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((ii.first)->first == element2, internal_logic ());   // broken map
             return (ii.first)->second;
 #else
             return reference (*this, i, j);
@@ -1424,7 +1448,7 @@ namespace boost { namespace numeric { namespace ublas {
 
             vector_data_value_type& vd (data () [element1]);
             std::pair<subiterator_type, bool> ii (vd.insert (typename vector_data_value_type::value_type (element2, t)));
-            BOOST_UBLAS_CHECK ((ii.first)->first == element2, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((ii.first)->first == element2, internal_logic ());   // broken map
             if (!ii.second)     // existing element
                 (ii.first)->second = t;
             return (ii.first)->second;
@@ -1539,10 +1563,10 @@ namespace boost { namespace numeric { namespace ublas {
             const size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             vector_subiterator_type itv (data ().find (element1));
             BOOST_UBLAS_CHECK (itv != data ().end(), bad_index ());
-            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*itv).first == element1, internal_logic ());   // broken map
             subiterator_type it ((*itv).second.find (element2));
             BOOST_UBLAS_CHECK (it != (*itv).second.end (), bad_index ());
-            BOOST_UBLAS_CHECK ((*it).first == element2, internal_logic ());    // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == element2, internal_logic ());    // broken map
             
             return it->second;
         }

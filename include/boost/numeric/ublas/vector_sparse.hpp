@@ -154,29 +154,29 @@ namespace boost { namespace numeric { namespace ublas {
      */
     namespace detail {
         template <class R>
-        struct vector_element_reference {
+        struct element_reference {
             typedef R& reference;
-            static reference element_reference (reference r)
+            static reference get_reference (reference r)
             {
                 return r;
             }
         };
         template <class V>
-        struct vector_element_reference<sparse_vector_element<V> > {
+        struct element_reference<sparse_vector_element<V> > {
             typedef typename V::value_type& reference;
-            static reference element_reference (const sparse_vector_element<V>& sve)
+            static reference get_reference (const sparse_vector_element<V>& sve)
             {
                 return sve.ref ();
             }
         };
     }
     template <class VER>
-    typename detail::vector_element_reference<VER>::reference ref (VER& ver) {
-        return detail::vector_element_reference<VER>::element_reference (ver);
+    typename detail::element_reference<VER>::reference ref (VER& ver) {
+        return detail::element_reference<VER>::get_reference (ver);
     }
     template <class VER>
-    typename detail::vector_element_reference<VER>::reference ref (const VER& ver) {
-        return detail::vector_element_reference<VER>::element_reference (ver);
+    typename detail::element_reference<VER>::reference ref (const VER& ver) {
+        return detail::element_reference<VER>::get_reference (ver);
     }
 
 
