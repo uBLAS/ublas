@@ -116,6 +116,22 @@ namespace boost { namespace numeric { namespace ublas {
             return (*this) (i);
         }
 
+        // Element assignment
+        BOOST_UBLAS_INLINE
+        reference set_element (size_type i, const_reference t) {
+            return (data () [i] = t);
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i) {
+            data () [i] = value_type (0);
+        }
+        
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            std::fill (data ().begin (), data ().end (), value_type (0));
+        }
+
         // Assignment
         BOOST_UBLAS_INLINE
         vector &operator = (const vector &v) {
@@ -137,7 +153,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         vector &operator = (const vector_expression<AE> &ae) {
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -150,7 +165,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         vector &operator += (const vector_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -163,7 +177,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         vector &operator -= (const vector_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -196,27 +209,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (vector &v1, vector &v2) {
             v1.swap (v2);
-        }
-
-        // Element insertion and erasure
-        // These functions should work with std::vector.
-        // Thanks to Kresimir Fresl for spotting this.
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, const_reference t) {
-            // FIXME: only works for EqualityComparable value types.
-            // BOOST_UBLAS_CHECK (data () [i] == value_type (0), bad_index ());
-            // Previously: data ().insert (data ().begin () + i, t);
-            data () [i] = t;
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i) {
-            // Previously: data ().erase (data ().begin () + i);
-            data () [i] = value_type (0);
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            // Previously: data ().clear ();
-            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Iterator types
@@ -1261,6 +1253,24 @@ namespace boost { namespace numeric { namespace ublas {
             return (*this) (i);
         }
 
+        // Element assignment
+        BOOST_UBLAS_INLINE
+        reference set_element (size_type i, const_reference t) {
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+            return (data_ [i] = t);
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i) {
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+            data_ [i] = value_type (0);
+        }
+        
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            std::fill (data_, data_ + size_, value_type (0));
+        }
+
         // Assignment
         BOOST_UBLAS_INLINE
         c_vector &operator = (const c_vector &v) {
@@ -1276,7 +1286,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         c_vector &operator = (const vector_expression<AE> &ae) {
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -1289,7 +1298,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         c_vector &operator += (const vector_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -1302,7 +1310,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         c_vector &operator -= (const vector_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -1337,23 +1344,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (c_vector &v1, c_vector &v2) {
             v1.swap (v2);
-        }
-
-        // Element insertion and erasure
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, const_reference t) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            BOOST_UBLAS_CHECK (data_ [i] == value_type (0), bad_index ());
-            data_ [i] = t;
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            data_ [i] = value_type (0);
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            std::fill (data_, data_ + size_, value_type (0));
         }
 
         // Iterator types

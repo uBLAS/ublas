@@ -151,6 +151,12 @@ namespace boost { namespace numeric { namespace ublas {
                 return data () [triangular_type::element (layout_type (), j, size_, i, size_)];
         }
         BOOST_UBLAS_INLINE
+        reference at_element (size_type i, size_type j) {
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+            BOOST_UBLAS_CHECK (j < size_, bad_index ());
+            return data () [triangular_type::element (layout_type (), i, size_, j, size_)];
+        }
+        BOOST_UBLAS_INLINE
         reference operator () (size_type i, size_type j) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             BOOST_UBLAS_CHECK (j < size_, bad_index ());
@@ -158,6 +164,23 @@ namespace boost { namespace numeric { namespace ublas {
                 return data () [triangular_type::element (layout_type (), i, size_, j, size_)];
             else
                 return data () [triangular_type::element (layout_type (), j, size_, i, size_)];
+        }
+
+        // Element assignment
+        BOOST_UBLAS_INLINE
+        reference set_element (size_type i, size_type j, const_reference t) {
+            return (operator () (i, j) = t);
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i, size_type j) {
+            operator () (i, j) = value_type (0);
+        }
+        
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            // data ().clear ();
+            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Assignment
@@ -175,7 +198,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         symmetric_matrix &operator = (const matrix_expression<AE> &ae) {
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -188,7 +210,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         symmetric_matrix& operator += (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -201,7 +222,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         symmetric_matrix& operator -= (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -235,46 +255,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (symmetric_matrix &m1, symmetric_matrix &m2) {
             m1.swap (m2);
-        }
-
-        // Element insertion and erasure
-        // These functions should work with std::vector.
-        // Thanks to Kresimir Fresl for spotting this.
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size_, bad_index ());
-            if (triangular_type::other (i, j)) {
-                size_type k = triangular_type::element (layout_type (), i, size_, j, size_);
-                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type (0)) ||
-                                   type_traits<value_type>::equals (data () [k], t), bad_index ());
-                // data ().insert (data ().begin () + k, t);
-                data () [k] = t;
-            } else {
-                size_type k = triangular_type::element (layout_type (), j, size_, i, size_);
-                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type (0)) ||
-                                   type_traits<value_type>::equals (data () [k], t), bad_index ());
-                // data ().insert (data ().begin () + k, t);
-                data () [k] = t;
-            }
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i, size_type j) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size_, bad_index ());
-            if (triangular_type::other (i, j)) {
-                // size_type k = triangular_type::element (layout_type (), i, size_, j, size_);
-                // data ().erase (data ().begin () + k));
-                data () [triangular_type::element (layout_type (), i, size_, j, size_)] = value_type (0);
-            } else {
-                // data ().erase (data ().begin () + k);
-                data () [triangular_type::element (layout_type (), j, size_, i, size_)] = value_type (0);
-            }
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            // data ().clear ();
-            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Iterator types

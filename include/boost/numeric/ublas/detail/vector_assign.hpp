@@ -372,13 +372,13 @@ namespace boost { namespace numeric { namespace ublas {
         indexing_vector_assign<F> (cv, e);
 #endif
 #endif
-        v.clear ();
+        v.zero ();
         typename E::const_iterator ite (e ().begin ());
         typename E::const_iterator ite_end (e ().end ());
         while (ite != ite_end) {
             value_type t (*ite);
             if (t != value_type (0))
-                v.insert (ite.index (), t);
+                v.set_element (ite.index (), t);
             ++ ite;
         }
 #if BOOST_UBLAS_TYPE_CHECK

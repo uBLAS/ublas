@@ -921,7 +921,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::value_type value_type;
         // Sparse type has no numeric constraints to check
 
-        m.clear ();
+        m.zero ();
         typename E::const_iterator1 it1e (e ().begin1 ());
         typename E::const_iterator1 it1e_end (e ().end1 ());
         while (it1e != it1e_end) {
@@ -935,7 +935,7 @@ namespace boost { namespace numeric { namespace ublas {
             while (it2e != it2e_end) {
                 value_type t (*it2e);
                 if (t != value_type (0))
-                    m.insert (it2e.index1 (), it2e.index2 (), t);
+                    m.set_element (it2e.index1 (), it2e.index2 (), t);
                 ++ it2e;
             }
             ++ it1e;
@@ -953,7 +953,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::value_type value_type;
         // Sparse type has no numeric constraints to check
 
-        m.clear ();
+        m.zero ();
         typename E::const_iterator2 it2e (e ().begin2 ());
         typename E::const_iterator2 it2e_end (e ().end2 ());
         while (it2e != it2e_end) {
@@ -967,7 +967,7 @@ namespace boost { namespace numeric { namespace ublas {
             while (it1e != it1e_end) {
                 value_type t (*it1e);
                 if (t != value_type (0))
-                    m.insert (it1e.index1 (), it1e.index2 (), t);
+                    m.set_element (it1e.index1 (), it1e.index2 (), t);
                 ++ it1e;
             }
             ++ it2e;

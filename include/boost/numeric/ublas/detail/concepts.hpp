@@ -764,14 +764,16 @@ namespace boost { namespace numeric { namespace ublas {
             size_type i (0);
             // Sizing constructor
             vector_type v (n);
-            // Insert
-            v.insert (i, t);
-            // Erase
-            v.erase (i);
-            // Clear
-            v.clear ();
+            // Element assignment
+            value_type r = v.set_element (i, t);
+            v.set_element (i, t) = r;
+            v.zero_element (i);
+            // Zeroing
+            v.zero ();
             // Resize
             v.resize (n);
+
+            ignore_unused_variable_warning (r);
         }
     };
 
@@ -802,15 +804,17 @@ namespace boost { namespace numeric { namespace ublas {
             size_type i (0), j (0);
             // Sizing constructor
             matrix_type m (n, n);
-            // Insert
-            m.insert (i, j, t);
-            // Erase
-            m.erase (i, j);
-            // Clear
-            m.clear ();
+            // Element assigment
+            value_type r = m.set_element (i, j, t);
+            m.set_element (i, j, t) = r;
+            m.zero_element (i, j);
+            // Zeroing
+            m.zero ();
             // Resize
             m.resize (n, n);
             m.resize (n, n, false);
+
+            ignore_unused_variable_warning (r);
         }
     };
 

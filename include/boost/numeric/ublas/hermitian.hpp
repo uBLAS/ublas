@@ -63,7 +63,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         ~hermitian_matrix_element () {
             if (dirty_)
-                ((*this) ()).at (i_, j_, d_);
+                (*this) ().set_element (i_, j_, d_);
         }
 
         // Assignment
@@ -337,7 +337,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element access
         BOOST_UBLAS_INLINE
-        const_reference at_element (size_type i, size_type j) const {
+        const_reference operator () (size_type i, size_type j) const {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             BOOST_UBLAS_CHECK (j < size_, bad_index ());
             // if (i == j)
@@ -352,39 +352,52 @@ namespace boost { namespace numeric { namespace ublas {
         true_reference at_element (size_type i, size_type j) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             BOOST_UBLAS_CHECK (j < size_, bad_index ());
-            if (triangular_type::other (i, j))
-                return data () [triangular_type::element (layout_type (), i, size_, j, size_)];
-            else {
-                external_logic ().raise ();
-                return conj_ = type_traits<value_type>::conj (data () [triangular_type::element (layout_type (), j, size_, i, size_)]);
-            }
-        }
-        BOOST_UBLAS_INLINE
-        void at (size_type i, size_type j, value_type t) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size_, bad_index ());
-            // if (i == j)
-            //    data () [triangular_type::element (layout_type (), i, size_, i, size_)] = type_traits<value_type>::real (t);
-            // else
-            if (triangular_type::other (i, j))
-                data () [triangular_type::element (layout_type (), i, size_, j, size_)] = t;
-            else
-                data () [triangular_type::element (layout_type (), j, size_, i, size_)] = type_traits<value_type>::conj (t);
-        }
-        BOOST_UBLAS_INLINE
-        const_reference operator () (size_type i, size_type j) const {
-            return at_element (i, j);
+            BOOST_UBLAS_CHECK (triangular_type::other (i, j), bad_index ());
+            return data () [triangular_type::element (layout_type (), i, size_, j, size_)];
         }
         BOOST_UBLAS_INLINE
         reference operator () (size_type i, size_type j) {
-#ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
-            return at_element (i, j);
+#ifndef BOOST_UBLAS_STRICT_HERMITIAN
+            if (triangular_type::other (i, j))
+                return at_element (i, j);
+            else {
+                external_logic ().raise ();
+                // arbitary return value
+                return data () [triangular_type::element (layout_type (), j, size_, i, size_)];
+            }
 #else
         if (triangular_type::other (i, j))
             return reference (*this, i, j, data () [triangular_type::element (layout_type (), i, size_, j, size_)]);
         else
             return reference (*this, i, j, type_traits<value_type>::conj (data () [triangular_type::element (layout_type (), j, size_, i, size_)]));
 #endif
+        }
+
+        // Element assignemnt
+        BOOST_UBLAS_INLINE
+        true_reference set_element (size_type i, size_type j, const_reference t) {
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+            BOOST_UBLAS_CHECK (j < size_, bad_index ());
+            if (triangular_type::other (i, j)) {
+                return (data () [triangular_type::element (layout_type (), i, size_, j, size_)] = t);
+            } else {
+                return (data () [triangular_type::element (layout_type (), j, size_, i, size_)] = type_traits<value_type>::conj (t));
+            }
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i, size_type j) {
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+            BOOST_UBLAS_CHECK (j < size_, bad_index ());
+            if (triangular_type::other (i, j))
+                std::swap (i, j);
+            
+            data () [triangular_type::element (layout_type (), i, size_, j, size_)] = value_type (0);
+        }
+
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Assignment
@@ -402,7 +415,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         hermitian_matrix &operator = (const matrix_expression<AE> &ae) {
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -415,7 +427,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         hermitian_matrix& operator += (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -428,7 +439,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         hermitian_matrix& operator -= (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -470,47 +480,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (hermitian_matrix &m1, hermitian_matrix &m2) {
             m1.swap (m2);
-        }
-
-        // Element insertion and erasure
-        // These functions should work with std::vector.
-        // Thanks to Kresimir Fresl for spotting this.
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size_, bad_index ());
-            if (triangular_type::other (i, j)) {
-                size_type k = triangular_type::element (layout_type (), i, size_, j, size_);
-                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type (0)) ||
-                                   type_traits<value_type>::equals (data () [k], t), bad_index ());
-                // data ().insert (data ().begin () + k, t);
-                data () [k] = t;
-            } else {
-                size_type k = triangular_type::element (layout_type (), j, size_, i, size_);
-                BOOST_UBLAS_CHECK (type_traits<value_type>::equals (data () [k], value_type (0)) ||
-                                   type_traits<value_type>::equals (data () [k], type_traits<value_type>::conj (t)), bad_index ());
-                // data ().insert (data ().begin () + k, type_traits<value_type>::conj (t));
-                data () [k] = type_traits<value_type>::conj (t);
-            }
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i, size_type j) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size_, bad_index ());
-            if (triangular_type::other (i, j)) {
-                size_type k = triangular_type::element (layout_type (), i, size_, j, size_);
-                // data ().erase (data ().begin () + k);
-                data () [k] = value_type (0);
-            } else {
-                size_type k = triangular_type::element (layout_type (), j, size_, i, size_);
-                // data ().erase (data ().begin () + k);
-                data () [k] = value_type (0);
-            }
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            // data ().clear ();
-            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Iterator types
@@ -611,7 +580,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Dereference
             BOOST_UBLAS_INLINE
             const_reference operator * () const {
-                return (*this) ().at_element (it1_, it2_);
+                return (*this) () (it1_, it2_);
             }
 
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
@@ -888,7 +857,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Dereference
             BOOST_UBLAS_INLINE
             const_reference operator * () const {
-                return (*this) ().at_element (it1_, it2_);
+                return (*this) () (it1_, it2_);
             }
 
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
@@ -1149,11 +1118,7 @@ namespace boost { namespace numeric { namespace ublas {
     private:
         size_type size_;
         array_type data_;
-        static value_type conj_;
     };
-
-    template<class T, class TRI, class L, class A>
-    typename hermitian_matrix<T, TRI, L, A>::value_type hermitian_matrix<T, TRI, L, A>::conj_;
 
 
     // Hermitian matrix adaptor class

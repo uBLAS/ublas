@@ -161,8 +161,28 @@ namespace boost { namespace numeric { namespace ublas {
             return data () [layout_type::element (i, size1_, j, size2_)];
         }
         BOOST_UBLAS_INLINE
-        reference operator () (size_type i, size_type j) {
+        reference at_element (size_type i, size_type j) {
             return data () [layout_type::element (i, size1_, j, size2_)];
+        }
+        BOOST_UBLAS_INLINE
+        reference operator () (size_type i, size_type j) {
+            return at_element (i, j);
+        }
+
+        // Element assignment
+        BOOST_UBLAS_INLINE
+        reference set_element (size_type i, size_type j, const_reference t) {
+            return(at_element (i, j) = t);
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i, size_type j) {
+            at_element (i, j) = value_type (0);
+        }
+        
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Assignment
@@ -188,7 +208,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         matrix &operator = (const matrix_expression<AE> &ae) {
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -201,7 +220,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         matrix& operator += (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -214,7 +232,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         matrix& operator -= (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -249,26 +266,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (matrix &m1, matrix &m2) {
             m1.swap (m2);
-        }
-
-        // Element insertion and erasure
-        // These functions should work with std::vector.
-        // Thanks to Kresimir Fresl for spotting this.
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (data () [layout_type::element (i, size1_, j, size2_)] == value_type (0), bad_index ());
-            // data ().insert (data ().begin () + layout_type::element (i, size1_, j, size2_), t);
-            data () [layout_type::element (i, size1_, j, size2_)] = t;
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i, size_type j) {
-            // data ().erase (data ().begin () + layout_type::element (i, size1_, j, size2_));
-            data () [layout_type::element (i, size1_, j, size2_)] = value_type (0);
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            // data ().clear ();
-            std::fill (data ().begin (), data ().end (), value_type (0));
         }
 
         // Iterator types
@@ -1082,8 +1079,29 @@ namespace boost { namespace numeric { namespace ublas {
             return data () [layout_type::element1 (i, size1_, j, size2_)] [layout_type::element2 (i, size1_, j, size2_)]; 
         }
         BOOST_UBLAS_INLINE
-        reference operator () (size_type i, size_type j) {
+        reference at_element (size_type i, size_type j) {
             return data () [layout_type::element1 (i, size1_, j, size2_)] [layout_type::element2 (i, size1_, j, size2_)]; 
+        }
+        BOOST_UBLAS_INLINE
+        reference operator () (size_type i, size_type j) {
+            return at_element (i, j); 
+        }
+
+        // Element assignment
+        BOOST_UBLAS_INLINE
+        reference set_element (size_type i, size_type j, const_reference t) {
+            return (at_element (i, j) = t); 
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i, size_type j) {
+            at_element (i, j) = value_type (0); 
+        }
+        
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            for (size_type k = 0; k < layout_type::size1 (size1_, size2_); ++ k)
+                std::fill (data () [k].begin (), data () [k].end (), value_type (0));
         }
 
         // Assignment
@@ -1102,7 +1120,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         vector_of_vector &operator = (const matrix_expression<AE> &ae) { 
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -1115,7 +1132,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         vector_of_vector& operator += (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -1128,7 +1144,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         vector_of_vector& operator -= (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -1163,25 +1178,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (vector_of_vector &m1, vector_of_vector &m2) {
             m1.swap (m2);
-        }
-
-        // Element insertion and erasure
-        // These functions should work with std::vector.
-        // Thanks to Kresimir Fresl for spotting this.
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (data () [layout_type::element1 (i, size1_, j, size2_)] [layout_type::element2 (i, size1_, j, size2_)] == value_type (0), bad_index ());
-            data () [layout_type::element1 (i, size1_, j, size2_)] [layout_type::element2 (i, size1_, j, size2_)] = t; 
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i, size_type j) {
-            data () [layout_type::element1 (i, size1_, j, size2_)] [layout_type::element2 (i, size1_, j, size2_)] = value_type (0); 
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            for (size_type k = 0; k < layout_type::size1 (size1_, size2_); ++ k)
-                // data () [k].clear ();
-                std::fill (data () [k].begin (), data () [k].end (), value_type (0));
         }
 
         // Iterator types
@@ -3328,10 +3324,31 @@ namespace boost { namespace numeric { namespace ublas {
             return data_ [i] [j];
         }
         BOOST_UBLAS_INLINE
-        reference operator () (size_type i, size_type j) {
+        reference at_element (size_type i, size_type j) {
             BOOST_UBLAS_CHECK (i < size1_, bad_index ());
             BOOST_UBLAS_CHECK (j < size2_, bad_index ());
             return data_ [i] [j];
+        }
+        BOOST_UBLAS_INLINE
+        reference operator () (size_type i, size_type j) {
+            return at_element (i, j);
+        }
+
+        // Element assignment
+        BOOST_UBLAS_INLINE
+        reference set_element (size_type i, size_type j, const_reference t) {
+            return (at_element (i, j) = t);
+        }
+        BOOST_UBLAS_INLINE
+        void zero_element (size_type i, size_type j) {
+            at_element (i, j) = value_type (0);
+        }
+        
+        // Zeroing
+        BOOST_UBLAS_INLINE
+        void zero () {
+            for (size_type i = 0; i < size1_; ++ i)
+                std::fill (data_ [i], data_ [i] + size2_, value_type (0));
         }
 
         // Assignment
@@ -3351,7 +3368,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         c_matrix &operator = (const matrix_expression<AE> &ae) { 
-            // return assign (self_type (ae));
             self_type temporary (ae);
             return assign_temporary (temporary);
         }
@@ -3364,7 +3380,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         c_matrix& operator += (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this + ae));
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
@@ -3377,7 +3392,6 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         c_matrix& operator -= (const matrix_expression<AE> &ae) {
-            // return assign (self_type (*this - ae));
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
@@ -3415,26 +3429,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         friend void swap (c_matrix &m1, c_matrix &m2) {
             m1.swap (m2);
-        }
-
-        // Element insertion and erasure
-        BOOST_UBLAS_INLINE
-        void insert (size_type i, size_type j, const_reference t) {
-            BOOST_UBLAS_CHECK (i < size1_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size2_, bad_index ());
-            BOOST_UBLAS_CHECK (data_ [i] [j] == value_type (0), bad_index ());
-            data_ [i] [j] = t;
-        }
-        BOOST_UBLAS_INLINE
-        void erase (size_type i, size_type j) {
-            BOOST_UBLAS_CHECK (i < size1_, bad_index ());
-            BOOST_UBLAS_CHECK (j < size2_, bad_index ());
-            data_ [i] [j] = value_type (0);
-        }
-        BOOST_UBLAS_INLINE
-        void clear () {
-            for (size_type i = 0; i < size1_; ++ i)
-                std::fill (data_ [i], data_ [i] + size2_, value_type (0));
         }
 
         // Iterator types
