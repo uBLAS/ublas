@@ -140,6 +140,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             ++ it1e;
         }
+        // ISSUE proxies require insert_element
         for (size_type k = 0; k < index.size (); ++ k)
             m (index [k].first, index [k].second) = value_type (0);
     }
@@ -242,6 +243,7 @@ namespace boost { namespace numeric { namespace ublas {
             }
             ++ it2e;
         }
+        // ISSUE proxies require insert_element
         for (size_type k = 0; k < index.size (); ++ k)
             m (index [k].first, index [k].second) = value_type (0);
     }
