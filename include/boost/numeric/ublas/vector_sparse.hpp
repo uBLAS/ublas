@@ -733,7 +733,6 @@ namespace boost { namespace numeric { namespace ublas {
         // ISSUE require type consistency check
         // is_convertable (IA::size_type, TA::size_type)
         typedef typename IA::value_type size_type;
-		// FIXME difference type for sprase storage iterators should it be in the container?
 		typedef typename IA::difference_type difference_type;
         typedef T value_type;
         typedef const T &const_reference;
@@ -753,25 +752,25 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         compressed_vector ():
             vector_expression<self_type> (),
-            size_ (0), non_zeros_ (restrict_capacity (0)), filled_ (0),
-            index_data_ (non_zeros_), value_data_ (non_zeros_) {}
+            size_ (0), capacity_ (restrict_capacity (0)), filled_ (0),
+            index_data_ (capacity_), value_data_ (capacity_) {}
         explicit BOOST_UBLAS_INLINE
         compressed_vector (size_type size, size_type non_zeros = 0):
             vector_expression<self_type> (),
-            size_ (size), non_zeros_ (restrict_capacity (non_zeros)), filled_ (0),
-            index_data_ (non_zeros_), value_data_ (non_zeros_) {
+            size_ (size), capacity_ (restrict_capacity (non_zeros)), filled_ (0),
+            index_data_ (capacity_), value_data_ (capacity_) {
         }
         BOOST_UBLAS_INLINE
         compressed_vector (const compressed_vector &v):
             vector_expression<self_type> (),
-            size_ (v.size_), non_zeros_ (v.non_zeros_), filled_ (v.filled_),
+            size_ (v.size_), capacity_ (v.capacity_), filled_ (v.filled_),
             index_data_ (v.index_data_), value_data_ (v.value_data_) {}
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_vector (const vector_expression<AE> &ae, size_type non_zeros = 0):
             vector_expression<self_type> (),
-            size_ (ae ().size ()), non_zeros_ (restrict_capacity (non_zeros)), filled_ (0),
-            index_data_ (non_zeros_), value_data_ (non_zeros_) {
+            size_ (ae ().size ()), capacity_ (restrict_capacity (non_zeros)), filled_ (0),
+            index_data_ (capacity_), value_data_ (capacity_) {
             vector_assign<scalar_assign> (*this, ae);
         }
 
@@ -782,7 +781,7 @@ namespace boost { namespace numeric { namespace ublas {
         }
         BOOST_UBLAS_INLINE
         size_type nnz_capacity () const {
-            return non_zeros_;
+            return capacity_;
         }
         BOOST_UBLAS_INLINE
         size_type nnz () const {
@@ -795,7 +794,7 @@ namespace boost { namespace numeric { namespace ublas {
             return IB;
         }
         BOOST_UBLAS_INLINE
-        const typename index_array_type::size_type &filled () const {
+        typename index_array_type::size_type filled () const {
             return filled_;
         }
         BOOST_UBLAS_INLINE
@@ -806,10 +805,10 @@ namespace boost { namespace numeric { namespace ublas {
         const value_array_type &value_data () const {
             return value_data_;
         }
-        // FIXME provide invariant safe manipulators for filled
         BOOST_UBLAS_INLINE
-        typename index_array_type::size_type &filled () {
-            return filled_;
+        void set_filled (const typename index_array_type::size_type & filled) {
+            filled_ = filled;
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         index_array_type &index_data () {
@@ -834,55 +833,55 @@ namespace boost { namespace numeric { namespace ublas {
             // FIXME preserve unimplemented
             BOOST_UBLAS_CHECK (!preserve, internal_logic ());
             size_ = size;
-            non_zeros_ = restrict_capacity (non_zeros_);
-            index_data (). resize (non_zeros_);
-            value_data (). resize (non_zeros_);
+            capacity_ = restrict_capacity (capacity_);
+            index_data_. resize (capacity_);
+            value_data_. resize (capacity_);
             filled_ = 0;
-            BOOST_UBLAS_CHECK (filled_ <= non_zeros_, internal_logic ());
+            storage_invariants ();
         }
 
         // Reserving
         BOOST_UBLAS_INLINE
         void reserve (size_type non_zeros, bool preserve = true) {
-            non_zeros_ = restrict_capacity (non_zeros);
+            capacity_ = restrict_capacity (non_zeros);
             if (preserve) {
-                index_data (). resize (non_zeros_, size_type ());
-                value_data (). resize (non_zeros_, value_type ());
-                filled_ = (std::min) (non_zeros_, filled_);
+                index_data_. resize (capacity_, size_type ());
+                value_data_. resize (capacity_, value_type ());
+                filled_ = (std::min) (capacity_, filled_);
             }
             else {
-                index_data (). resize (non_zeros_);
-                value_data (). resize (non_zeros_);
+                index_data_. resize (capacity_);
+                value_data_. resize (capacity_);
                 filled_ = 0;
             }
-            BOOST_UBLAS_CHECK (filled_ <= non_zeros_, internal_logic ());
+            storage_invariants ();
         }
 
         // Element support
         pointer find_element (size_type i) {
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            if (it == index_data ().begin () + filled_ || *it != k_based (i))
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return 0;
-            return &value_data () [it - index_data ().begin ()];
+            return &value_data_ [it - index_data_.begin ()];
         }
 
         // Element access
         BOOST_UBLAS_INLINE
         const_reference operator () (size_type i) const {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            const_subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            if (it == index_data ().begin () + filled_ || *it != k_based (i))
+            const_subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return zero_;
-            return value_data () [it - index_data ().begin ()];
+            return value_data_ [it - index_data_.begin ()];
         }
         BOOST_UBLAS_INLINE
         true_reference ref (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            if (it == index_data ().begin () + filled_ || *it != k_based (i))
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return insert_element (i, value_type (0));
             else
-                return value_data () [it - index_data ().begin ()];
+                return value_data_ [it - index_data_.begin ()];
         }
         BOOST_UBLAS_INLINE
         reference operator () (size_type i) {
@@ -907,37 +906,40 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         true_reference insert_element (size_type i, const_reference t) {
             BOOST_UBLAS_CHECK (!find_element (i), bad_index ());		// duplicate element
-            if (filled_ >= non_zeros_)
-                reserve (2 * non_zeros_, true);
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (filled_ >= capacity_)
+                reserve (2 * capacity_, true);
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
             // ISSUE max_capacity limit due to difference_type
-            typename std::iterator_traits<subiterator_type>::difference_type n = it - index_data ().begin ();
-            BOOST_UBLAS_CHECK (filled_ == 0 || filled_ == typename index_array_type::size_type (n) || *it != k_based (i), external_logic ());
+            typename std::iterator_traits<subiterator_type>::difference_type n = it - index_data_.begin ();
+            BOOST_UBLAS_CHECK (filled_ == 0 || filled_ == typename index_array_type::size_type (n) || *it != k_based (i), internal_logic ());   // duplicate found by lower_bound
             ++ filled_;
-            it = index_data ().begin () + n;
-            std::copy_backward (it, index_data ().begin () + filled_ - 1, index_data ().begin () + filled_);
+            it = index_data_.begin () + n;
+            std::copy_backward (it, index_data_.begin () + filled_ - 1, index_data_.begin () + filled_);
             *it = k_based (i);
-            typename value_array_type::iterator itt (value_data ().begin () + n);
-            std::copy_backward (itt, value_data ().begin () + filled_ - 1, value_data ().begin () + filled_);
+            typename value_array_type::iterator itt (value_data_.begin () + n);
+            std::copy_backward (itt, value_data_.begin () + filled_ - 1, value_data_.begin () + filled_);
             *itt = t;
+            storage_invariants ();
             return *itt;
         }
         BOOST_UBLAS_INLINE
         void erase_element (size_type i) {
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            typename std::iterator_traits<subiterator_type>::difference_type  n = it - index_data ().begin ();
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            typename std::iterator_traits<subiterator_type>::difference_type  n = it - index_data_.begin ();
             if (filled_ > typename index_array_type::size_type (n) && *it == k_based (i)) {
-                std::copy (it + 1, index_data ().begin () + filled_, it);
-                typename value_array_type::iterator itt (value_data ().begin () + n);
-                std::copy (itt + 1, value_data ().begin () + filled_, itt);
+                std::copy (it + 1, index_data_.begin () + filled_, it);
+                typename value_array_type::iterator itt (value_data_.begin () + n);
+                std::copy (itt + 1, value_data_.begin () + filled_, itt);
                 -- filled_;
             }
+            storage_invariants ();
         }
         
         // Zeroing
         BOOST_UBLAS_INLINE
         void clear () {
             filled_ = 0;
+            storage_invariants ();
         }
 
         // Assignment
@@ -945,13 +947,12 @@ namespace boost { namespace numeric { namespace ublas {
         compressed_vector &operator = (const compressed_vector &v) {
             if (this != &v) {
                 size_ = v.size_;
-                non_zeros_ = v.non_zeros_;
+                capacity_ = v.capacity_;
                 filled_ = v.filled_;
-                index_data () = v.index_data ();
-                value_data () = v.value_data ();
-                BOOST_UBLAS_CHECK (non_zeros_ == index_data ().size (), internal_logic ());
-                BOOST_UBLAS_CHECK (non_zeros_ == value_data ().size (), internal_logic ());
+                index_data_ = v.index_data_;
+                value_data_ = v.value_data_;
             }
+            storage_invariants ();
             return *this;
         }
         BOOST_UBLAS_INLINE
@@ -962,7 +963,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_vector &operator = (const vector_expression<AE> &ae) {
-            self_type temporary (ae, non_zeros_);
+            self_type temporary (ae, capacity_);
             return assign_temporary (temporary);
         }
         template<class AE>
@@ -974,7 +975,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_vector &operator += (const vector_expression<AE> &ae) {
-            self_type temporary (*this + ae, non_zeros_);
+            self_type temporary (*this + ae, capacity_);
             return assign_temporary (temporary);
         }
         template<class AE>
@@ -986,7 +987,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_vector &operator -= (const vector_expression<AE> &ae) {
-            self_type temporary (*this - ae, non_zeros_);
+            self_type temporary (*this - ae, capacity_);
             return assign_temporary (temporary);
         }
         template<class AE>
@@ -1013,11 +1014,12 @@ namespace boost { namespace numeric { namespace ublas {
         void swap (compressed_vector &v) {
             if (this != &v) {
                 std::swap (size_, v.size_);
-                std::swap (non_zeros_, v.non_zeros_);
+                std::swap (capacity_, v.capacity_);
                 std::swap (filled_, v.filled_);
-                index_data ().swap (v.index_data ());
-                value_data ().swap (v.value_data ());
+                index_data_.swap (v.index_data_);
+                value_data_.swap (v.value_data_);
             }
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         friend void swap (compressed_vector &v1, compressed_vector &v2) {
@@ -1027,18 +1029,20 @@ namespace boost { namespace numeric { namespace ublas {
         // Back element insertion and erasure
         BOOST_UBLAS_INLINE
         void push_back (size_type i, const_reference t) {
-            BOOST_UBLAS_CHECK (filled_ == 0 || index_data () [filled_ - 1] < k_based (i), external_logic ());
-            if (filled_ >= non_zeros_)
-                reserve (2 * non_zeros_, true);
-            BOOST_UBLAS_CHECK (filled_ < non_zeros_, internal_logic ());
-            index_data () [filled_] = k_based (i);
-            value_data () [filled_] = t;
+            BOOST_UBLAS_CHECK (filled_ == 0 || index_data_ [filled_ - 1] < k_based (i), external_logic ());
+            if (filled_ >= capacity_)
+                reserve (2 * capacity_, true);
+            BOOST_UBLAS_CHECK (filled_ < capacity_, internal_logic ());
+            index_data_ [filled_] = k_based (i);
+            value_data_ [filled_] = t;
             ++ filled_;
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         void pop_back () {
             BOOST_UBLAS_CHECK (filled_ > 0, external_logic ());
             -- filled_;
+            storage_invariants ();
         }
 
         // Iterator types
@@ -1050,9 +1054,9 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         true_reference at_element (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            BOOST_UBLAS_CHECK (it != index_data ().begin () + filled_ && *it == k_based (i), bad_index ());
-            return value_data () [it - index_data ().begin ()];
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            BOOST_UBLAS_CHECK (it != index_data_.begin () + filled_ && *it == k_based (i), bad_index ());
+            return value_data_ [it - index_data_.begin ()];
         }
 
     public:
@@ -1062,11 +1066,11 @@ namespace boost { namespace numeric { namespace ublas {
         // Element lookup
         // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator find (size_type i) const {
-            return const_iterator (*this, detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
+            return const_iterator (*this, detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
         }
         // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator find (size_type i) {
-            return iterator (*this, detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
+            return iterator (*this, detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
         }
 
 
@@ -1107,7 +1111,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             const_reference operator * () const {
                 BOOST_UBLAS_CHECK (index () < (*this) ().size (), bad_index ());
-                return (*this) ().value_data () [it_ - (*this) ().index_data ().begin ()];
+                return (*this) ().value_data_ [it_ - (*this) ().index_data_.begin ()];
             }
 
             // Index
@@ -1180,7 +1184,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             reference operator * () const {
                 BOOST_UBLAS_CHECK (index () < (*this) ().size (), bad_index ());
-                return (*this) ().value_data () [it_ - (*this) ().index_data ().begin ()];
+                return (*this) ().value_data_ [it_ - (*this) ().index_data_.begin ()];
             }
 
             // Index
@@ -1243,8 +1247,15 @@ namespace boost { namespace numeric { namespace ublas {
         }
 
     private:
+        void storage_invariants () const
+        {
+            BOOST_UBLAS_CHECK (capacity_ == index_data_.size (), internal_logic ());
+            BOOST_UBLAS_CHECK (capacity_ == value_data_.size (), internal_logic ());
+            BOOST_UBLAS_CHECK (filled_ <= capacity_, internal_logic ());
+        }
+
         size_type size_;
-        typename index_array_type::size_type non_zeros_;
+        typename index_array_type::size_type capacity_;
         typename index_array_type::size_type filled_;
         index_array_type index_data_;
         value_array_type value_data_;
@@ -1283,7 +1294,6 @@ namespace boost { namespace numeric { namespace ublas {
         // ISSUE require type consistency check
         // is_convertable (IA::size_type, TA::size_type)
         typedef typename IA::value_type size_type;
-		// FIXME difference type for sprase storage iterators should it be in the container?
 		typedef typename IA::difference_type difference_type;
         typedef T value_type;
         typedef const T &const_reference;
@@ -1303,25 +1313,35 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         coordinate_vector ():
             vector_expression<self_type> (),
-            size_ (0), non_zeros_ (restrict_capacity (0)), filled_ (0),
-            sorted_ (true), index_data_ (non_zeros_), value_data_ (non_zeros_) {}
+            size_ (0), capacity_ (restrict_capacity (0)),
+            filled_ (0), sorted_filled_ (filled_), sorted_ (true),
+            index_data_ (capacity_), value_data_ (capacity_) {
+            storage_invariants ();
+        }
         explicit BOOST_UBLAS_INLINE
         coordinate_vector (size_type size, size_type non_zeros = 0):
             vector_expression<self_type> (),
-            size_ (size), non_zeros_ (restrict_capacity (non_zeros)), filled_ (0),
-            sorted_ (true), index_data_ (non_zeros_), value_data_ (non_zeros_) {
+            size_ (size), capacity_ (restrict_capacity (non_zeros)),
+            filled_ (0), sorted_filled_ (filled_), sorted_ (true),
+            index_data_ (capacity_), value_data_ (capacity_) {
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         coordinate_vector (const coordinate_vector &v):
             vector_expression<self_type> (),
-            size_ (v.size_), non_zeros_ (v.non_zeros_), filled_ (v.filled_),
-            sorted_ (v.sorted_), index_data_ (v.index_data_), value_data_ (v.value_data_) {}
+            size_ (v.size_), capacity_ (v.capacity_),
+            filled_ (v.filled_), sorted_filled_ (v.sorted_filled_), sorted_ (v.sorted_),
+            index_data_ (v.index_data_), value_data_ (v.value_data_) {
+            storage_invariants ();
+        }
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_vector (const vector_expression<AE> &ae, size_type non_zeros = 0):
             vector_expression<self_type> (),
-            size_ (ae ().size ()), non_zeros_ (restrict_capacity (non_zeros)), filled_ (0),
-            sorted_ (true), index_data_ (non_zeros_), value_data_ (non_zeros_) {
+            size_ (ae ().size ()), capacity_ (restrict_capacity (non_zeros)),
+            filled_ (0), sorted_filled_ (filled_), sorted_ (true),
+            index_data_ (capacity_), value_data_ (capacity_) {
+            storage_invariants ();
             vector_assign<scalar_assign> (*this, ae);
         }
 
@@ -1332,7 +1352,7 @@ namespace boost { namespace numeric { namespace ublas {
         }
         BOOST_UBLAS_INLINE
         size_type nnz_capacity () const {
-            return non_zeros_;
+            return capacity_;
         }
         BOOST_UBLAS_INLINE
         size_type nnz () const {
@@ -1345,7 +1365,7 @@ namespace boost { namespace numeric { namespace ublas {
             return IB;
         }
         BOOST_UBLAS_INLINE
-        const typename index_array_type::size_type &filled () const {
+        typename index_array_type::size_type filled () const {
             return filled_;
         }
         BOOST_UBLAS_INLINE
@@ -1356,9 +1376,11 @@ namespace boost { namespace numeric { namespace ublas {
         const value_array_type &value_data () const {
             return value_data_;
         }
-        // FIXME provide invariant safe manipulators for filled
         BOOST_UBLAS_INLINE
-        typename index_array_type::size_type &filled () {
+        void set_filled (const typename index_array_type::size_type &sorted, const typename index_array_type::size_type &filled) {
+            sorted_filled_ = sorted;
+            filled_ = filled;
+            storage_invariants ();
             return filled_;
         }
         BOOST_UBLAS_INLINE
@@ -1384,46 +1406,48 @@ namespace boost { namespace numeric { namespace ublas {
         void resize (size_type size, bool preserve = true) {
             if (preserve)
                 sort ();    // remove duplicate elements.
-            non_zeros_ = restrict_capacity (non_zeros_);
+            capacity_ = restrict_capacity (capacity_);
             if (preserve) {
-                index_data (). resize (non_zeros_, size_type ());
-                value_data (). resize (non_zeros_, value_type ());
-                filled_ = (std::min) (non_zeros_, filled_);
+                index_data_. resize (capacity_, size_type ());
+                value_data_. resize (capacity_, value_type ());
+                filled_ = (std::min) (capacity_, filled_);
             }
             else {
-                index_data (). resize (non_zeros_);
-                value_data (). resize (non_zeros_);
+                index_data_. resize (capacity_);
+                value_data_. resize (capacity_);
                 filled_ = 0;
             }
+            sorted_filled_ = filled_;
             size_ = size;
-            BOOST_UBLAS_CHECK (filled_ <= non_zeros_, internal_logic ());
+            storage_invariants ();
         }
         // Reserving
         BOOST_UBLAS_INLINE
         void reserve (size_type non_zeros, bool preserve = true) {
             if (preserve)
                 sort ();    // remove duplicate elements.
-            non_zeros_ = restrict_capacity (non_zeros);
+            capacity_ = restrict_capacity (non_zeros);
             if (preserve) {
-                index_data (). resize (non_zeros_, size_type ());
-                value_data (). resize (non_zeros_, value_type ());
-                filled_ = (std::min) (non_zeros_, filled_);
+                index_data_. resize (capacity_, size_type ());
+                value_data_. resize (capacity_, value_type ());
+                filled_ = (std::min) (capacity_, filled_);
                 }
             else {
-                index_data (). resize (non_zeros_);
-                value_data (). resize (non_zeros_);
+                index_data_. resize (capacity_);
+                value_data_. resize (capacity_);
                 filled_ = 0;
             }
-            BOOST_UBLAS_CHECK (filled_ <= non_zeros_, internal_logic ());
+            sorted_filled_ = filled_;
+            storage_invariants ();
         }
 
         // Element support
         pointer find_element (size_type i) {
             sort ();
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            if (it == index_data ().begin () + filled_ || *it != k_based (i))
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return 0;
-            return &value_data () [it - index_data ().begin ()];
+            return &value_data_ [it - index_data_.begin ()];
         }
 
         // Element access
@@ -1431,20 +1455,20 @@ namespace boost { namespace numeric { namespace ublas {
         const_reference operator () (size_type i) const {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             sort ();
-            const_subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            if (it == index_data ().begin () + filled_ || *it != k_based (i))
+            const_subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return zero_;
-            return value_data () [it - index_data ().begin ()];
+            return value_data_ [it - index_data_.begin ()];
         }
         BOOST_UBLAS_INLINE
         true_reference ref (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             sort ();
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            if (it == index_data ().begin () + filled_ || *it != k_based (i))
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return insert_element (i, value_type (0));
             else
-                return value_data () [it - index_data ().begin ()];
+                return value_data_ [it - index_data_.begin ()];
         }
         BOOST_UBLAS_INLINE
         reference operator () (size_type i) {
@@ -1468,37 +1492,43 @@ namespace boost { namespace numeric { namespace ublas {
         // Element assignment
         BOOST_UBLAS_INLINE
         void append_element (size_type i, const_reference t) {
-            if (filled_ >= non_zeros_)
+            if (filled_ >= capacity_)
                 reserve (2 * filled_, true);
-            BOOST_UBLAS_CHECK (filled_ < non_zeros_, internal_logic ());
-            index_data () [filled_] = k_based (i);
-            value_data () [filled_] = t;
+            BOOST_UBLAS_CHECK (filled_ < capacity_, internal_logic ());
+            index_data_ [filled_] = k_based (i);
+            value_data_ [filled_] = t;
             ++ filled_;
             sorted_ = false;
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         true_reference insert_element (size_type i, const_reference t) {
             BOOST_UBLAS_CHECK (!find_element (i), bad_index ());		// duplicate element
         	append_element (i, t);
-            return value_data () [filled_ - 1];
+            return value_data_ [filled_ - 1];
         }
         BOOST_UBLAS_INLINE
         void erase_element (size_type i) {
             sort ();
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            typename std::iterator_traits<subiterator_type>::difference_type n = it - index_data ().begin ();
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            typename std::iterator_traits<subiterator_type>::difference_type n = it - index_data_.begin ();
             if (filled_ > typename index_array_type::size_type (n) && *it == k_based (i)) {
-                std::copy (it + 1, index_data ().begin () + filled_, it);
-                typename value_array_type::iterator itt (value_data ().begin () + n);
-                std::copy (itt + 1, value_data ().begin () + filled_, itt);
+                std::copy (it + 1, index_data_.begin () + filled_, it);
+                typename value_array_type::iterator itt (value_data_.begin () + n);
+                std::copy (itt + 1, value_data_.begin () + filled_, itt);
                 -- filled_;
+                sorted_filled_ = filled_;
             }
+            storage_invariants ();
         }
         
         // Zeroing
         BOOST_UBLAS_INLINE
         void clear () {
             filled_ = 0;
+            sorted_filled_ = filled_;
+            sorted_ = true;
+            storage_invariants ();
         }
         
         // Assignment
@@ -1506,14 +1536,14 @@ namespace boost { namespace numeric { namespace ublas {
         coordinate_vector &operator = (const coordinate_vector &v) {
             if (this != &v) {
                 size_ = v.size_;
-                non_zeros_ = v.non_zeros_;
+                capacity_ = v.capacity_;
                 filled_ = v.filled_;
+                sorted_filled_ = v.sorted_filled_;
                 sorted_ = v.sorted_;
-                index_data () = v.index_data ();
-                value_data () = v.value_data ();
-                BOOST_UBLAS_CHECK (non_zeros_ == index_data ().size (), internal_logic ());
-                BOOST_UBLAS_CHECK (non_zeros_ == value_data ().size (), internal_logic ());
+                index_data_ = v.index_data_;
+                value_data_ = v.value_data_;
             }
+            storage_invariants ();
             return *this;
         }
         BOOST_UBLAS_INLINE
@@ -1524,7 +1554,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_vector &operator = (const vector_expression<AE> &ae) {
-            self_type temporary (ae, non_zeros_);
+            self_type temporary (ae, capacity_);
             return assign_temporary (temporary);
         }
         template<class AE>
@@ -1536,7 +1566,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_vector &operator += (const vector_expression<AE> &ae) {
-            self_type temporary (*this + ae, non_zeros_);
+            self_type temporary (*this + ae, capacity_);
             return assign_temporary (temporary);
         }
         template<class AE>
@@ -1548,7 +1578,7 @@ namespace boost { namespace numeric { namespace ublas {
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_vector &operator -= (const vector_expression<AE> &ae) {
-            self_type temporary (*this - ae, non_zeros_);
+            self_type temporary (*this - ae, capacity_);
             return assign_temporary (temporary);
         }
         template<class AE>
@@ -1575,12 +1605,14 @@ namespace boost { namespace numeric { namespace ublas {
         void swap (coordinate_vector &v) {
             if (this != &v) {
                 std::swap (size_, v.size_);
-                std::swap (non_zeros_, v.non_zeros_);
+                std::swap (capacity_, v.capacity_);
                 std::swap (filled_, v.filled_);
+                std::swap (sorted_filled_, v.sorted_filled_);
                 std::swap (sorted_, v.sorted_);
-                index_data ().swap (v.index_data ());
-                value_data ().swap (v.value_data ());
+                index_data_.swap (v.index_data_);
+                value_data_.swap (v.value_data_);
             }
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         friend void swap (coordinate_vector &v1, coordinate_vector &v2) {
@@ -1591,10 +1623,13 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void sort () const {
             if (! sorted_ && filled_ > 0) {
-                index_pair_array<index_array_type, value_array_type>
-                    ipa (filled_, index_data_, value_data_);
-                // stable_sort, elements will normaly be partialy sorted
-                std::stable_sort (ipa.begin (), ipa.end ());
+                typedef index_pair_array<index_array_type, value_array_type> array_pair;
+                array_pair ipa (filled_, index_data_, value_data_);
+                const typename array_pair::iterator iunsorted = ipa.begin () + sorted_filled_;
+                // sort new elements and merge
+                std::sort (iunsorted, ipa.end ());
+                std::inplace_merge (ipa.begin (), iunsorted, ipa.end ());
+                
                 // sum duplicates with += and remove
                 size_type filled = 0;
                 for (size_type i = 1; i < filled_; ++ i) {
@@ -1609,25 +1644,34 @@ namespace boost { namespace numeric { namespace ublas {
                     }
                 }
                 filled_ = filled + 1;
+                sorted_filled_ = filled_;
                 sorted_ = true;
+                storage_invariants ();
             }
         }
 
         // Back element insertion and erasure
         BOOST_UBLAS_INLINE
         void push_back (size_type i, const_reference t) {
-            BOOST_UBLAS_CHECK (sorted_ && (filled_ == 0 || index_data () [filled_ - 1] < k_based (i)), external_logic ());
-            if (filled_ >= non_zeros_)
+            // must maintain sort order
+            BOOST_UBLAS_CHECK (sorted_ && (filled_ == 0 || index_data_ [filled_ - 1] < k_based (i)), external_logic ());
+            if (filled_ >= capacity_)
                 reserve (2 * filled_, true);
-            BOOST_UBLAS_CHECK (filled_ < non_zeros_, internal_logic ());
-            index_data () [filled_] = k_based (i);
-            value_data () [filled_] = t;
+            BOOST_UBLAS_CHECK (filled_ < capacity_, internal_logic ());
+            index_data_ [filled_] = k_based (i);
+            value_data_ [filled_] = t;
             ++ filled_;
+            sorted_filled_ = filled_;
+            storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         void pop_back () {
+            // ISSUE invariants could be simpilfied if sorted required as precondition
             BOOST_UBLAS_CHECK (filled_ > 0, external_logic ());
             -- filled_;
+            sorted_filled_ = (std::min) (sorted_filled_, filled_);
+            sorted_ = sorted_filled_ = filled;
+            storage_invariants ();
         }
 
         // Iterator types
@@ -1640,9 +1684,9 @@ namespace boost { namespace numeric { namespace ublas {
         true_reference at_element (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             sort ();
-            subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
-            BOOST_UBLAS_CHECK (it != index_data ().begin () + filled_ && *it == k_based (i), bad_index ());
-            return value_data () [it - index_data ().begin ()];
+            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            BOOST_UBLAS_CHECK (it != index_data_.begin () + filled_ && *it == k_based (i), bad_index ());
+            return value_data_ [it - index_data_.begin ()];
         }
 
     public:
@@ -1653,12 +1697,12 @@ namespace boost { namespace numeric { namespace ublas {
         // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         const_iterator find (size_type i) const {
             sort ();
-            return const_iterator (*this, detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
+            return const_iterator (*this, detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
         }
         // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.    
         iterator find (size_type i) {
             sort ();
-            return iterator (*this, detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
+            return iterator (*this, detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
         }
 
 
@@ -1699,7 +1743,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             const_reference operator * () const {
                 BOOST_UBLAS_CHECK (index () < (*this) ().size (), bad_index ());
-                return (*this) ().value_data () [it_ - (*this) ().index_data ().begin ()];
+                return (*this) ().value_data_ [it_ - (*this) ().index_data_.begin ()];
             }
 
             // Index
@@ -1772,7 +1816,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             reference operator * () const {
                 BOOST_UBLAS_CHECK (index () < (*this) ().size (), bad_index ());
-                return (*this) ().value_data () [it_ - (*this) ().index_data ().begin ()];
+                return (*this) ().value_data_ [it_ - (*this) ().index_data_.begin ()];
             }
 
             // Index
@@ -1835,9 +1879,19 @@ namespace boost { namespace numeric { namespace ublas {
         }
 
     private:
+        void storage_invariants () const
+        {
+            BOOST_UBLAS_CHECK (capacity_ == index_data_.size (), internal_logic ());
+            BOOST_UBLAS_CHECK (capacity_ == value_data_.size (), internal_logic ());
+            BOOST_UBLAS_CHECK (filled_ <= capacity_, internal_logic ());
+            BOOST_UBLAS_CHECK (sorted_filled_ <= filled_, internal_logic ());
+            BOOST_UBLAS_CHECK (sorted_ == (sorted_filled_ == filled_), internal_logic ());
+        }
+
         size_type size_;
-        size_type non_zeros_;
+        size_type capacity_;
         mutable typename index_array_type::size_type filled_;
+        mutable typename index_array_type::size_type sorted_filled_; 
         mutable bool sorted_;
         mutable index_array_type index_data_;
         mutable value_array_type value_data_;
