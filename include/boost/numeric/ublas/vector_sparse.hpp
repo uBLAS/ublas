@@ -39,7 +39,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     private:
         // Proxied element operations
-        void get_d () {
+        void get_d () const {
             pointer p = (*this) ().find_element (i_);
             if (p)
                 d_ = *p;
@@ -137,7 +137,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     private:
         size_type i_;
-        value_type d_;
+        mutable value_type d_;
     };
 
     template<class V>
