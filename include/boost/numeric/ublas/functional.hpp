@@ -190,7 +190,7 @@ namespace boost { namespace numeric { namespace ublas {
         public scalar_binary_assign_functor<T1, T2> {
         typedef typename scalar_binary_assign_functor<T1, T2>::argument1_type argument1_type;
         typedef typename scalar_binary_assign_functor<T1, T2>::argument2_type argument2_type;
-        typedef assign_tag assign_category;
+        static const bool computed = false;
 
         static BOOST_UBLAS_INLINE
         void apply (argument1_type t1, argument2_type t2) {
@@ -207,7 +207,7 @@ namespace boost { namespace numeric { namespace ublas {
         public scalar_binary_assign_functor<T1, T2> {
         typedef typename scalar_binary_assign_functor<T1, T2>::argument1_type argument1_type;
         typedef typename scalar_binary_assign_functor<T1, T2>::argument2_type argument2_type;
-        typedef computed_assign_tag assign_category;
+        static const bool computed = true;
 
         static BOOST_UBLAS_INLINE
         void apply (argument1_type t1, argument2_type t2) {
@@ -224,7 +224,7 @@ namespace boost { namespace numeric { namespace ublas {
         public scalar_binary_assign_functor<T1, T2> {
         typedef typename scalar_binary_assign_functor<T1, T2>::argument1_type argument1_type;
         typedef typename scalar_binary_assign_functor<T1, T2>::argument2_type argument2_type;
-        typedef computed_assign_tag assign_category;
+        static const bool computed = true;
 
         static BOOST_UBLAS_INLINE
         void apply (argument1_type t1, argument2_type t2) {
@@ -241,7 +241,7 @@ namespace boost { namespace numeric { namespace ublas {
         public scalar_binary_assign_functor<T1, T2> {
         typedef typename scalar_binary_assign_functor<T1, T2>::argument1_type argument1_type;
         typedef typename scalar_binary_assign_functor<T1, T2>::argument2_type argument2_type;
-        typedef computed_assign_tag assign_category;
+        static const bool computed = true;
 
         static BOOST_UBLAS_INLINE
         void apply (argument1_type t1, argument2_type t2) {
@@ -258,7 +258,7 @@ namespace boost { namespace numeric { namespace ublas {
         public scalar_binary_assign_functor<T1, T2> {
         typedef typename scalar_binary_assign_functor<T1, T2>::argument1_type argument1_type;
         typedef typename scalar_binary_assign_functor<T1, T2>::argument2_type argument2_type;
-        typedef computed_assign_tag assign_category;
+        static const bool computed = true;
 
         static BOOST_UBLAS_INLINE
         void apply (argument1_type t1, argument2_type t2) {
