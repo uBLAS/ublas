@@ -1530,7 +1530,6 @@ namespace boost { namespace numeric { namespace ublas {
             IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
             MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
         }
-#ifdef BOOST_UBLAS_ENABLE_EXPERIMENTAL
         {
             typedef generalized_vector_of_vector<double, row_major, vector< coordinate_vector<double> > > container_model;
             SparseMatrixConcept<const container_model>::constraints ();
@@ -1540,7 +1539,6 @@ namespace boost { namespace numeric { namespace ublas {
             IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
             MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
         }
-#endif
 
 #endif
 
