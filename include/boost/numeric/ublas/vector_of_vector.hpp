@@ -32,6 +32,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
+        typedef T *const_pointer;
         typedef L layout_type;
         typedef generalized_vector_of_vector<T, L, A> self_type;
     public:
@@ -126,31 +127,38 @@ namespace boost { namespace numeric { namespace ublas {
             ref (data () [sizeM]).resize (0, false);
         }
 
-        // Proxy support
-        pointer find_element (size_type i, size_type j) {
+        // Element support
+        BOOST_UBLAS_INLINE
+        pointer find_element (size_type i) {
+            return const_cast<pointer> (const_cast<const self_type&>(*this).find_element (i));
+        }
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i, size_type j) const {
             const size_type elementM = layout_type::size1 (size1_, size2_);
             const size_type elementm = layout_type::size2 (size1_, size2_);
-            vectoriterator_type itv (data ().find (elementM));
-            if (itv == data ().end ())
-                return 0;
-            BOOST_UBLAS_CHECK (itv.index () == elementM, internal_logic ());    // broken vector find
-            subiterator_type it ((*itv).find (elementm));
-            if (it ==  (*itv).end ())
-                return 0;
-            BOOST_UBLAS_CHECK (it.index () == elementm, internal_logic ());     // broken vector find
-            return & (*it);
+            // optimise check the storage_type and index directly if element always exists
+            if (mpl::is_convertiable (typename array_type::storage_type, packed_tag) {
+                return data () [elementM] [elementm];
+            }
+            else {
+                typename array_type::pointer pv = find_element (elementM);
+                if (!pv)
+                    return 0;
+                return pv->find_element (elementm);
+            }
         }
 
         // Element access
         BOOST_UBLAS_INLINE
         const_reference operator () (size_type i, size_type j) const {
-            const_vectoriterator_type itv (data ().find (layout_type::element1 (i, size1_, j, size2_)));
-            if (itv == data ().end () || itv.index () != layout_type::element1 (i, size1_, j, size2_))
+            const_pointer p = find_element (i, j);
+            // optimise check the storage_type and index directly if element always exists
+            if (mpl::is_convertiable (typename array_type::storage_type, packed_tag) {
+                BOOST_UBLAS_CHECK (p, internal_error() );
+                return *p;
+            }
+            if (!p)
                 return zero_;
-            const_subiterator_type it ((*itv).find (layout_type::element2 (i, size1_, j, size2_)));
-            if (it == (*itv).end () || it.index () != layout_type::element2 (i, size1_, j, size2_))
-                return zero_;
-            return (*it);
         }
         BOOST_UBLAS_INLINE
         reference operator () (size_type i, size_type j) {

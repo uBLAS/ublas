@@ -724,12 +724,19 @@ namespace boost { namespace numeric { namespace ublas {
     struct VectorConcept {
         typedef V vector_type;
         typedef typename V::size_type size_type;
+        typedef typename V::value_type value_type;
+        typedef const value_type *const_pointer;
 
         static void constraints () {
             VectorExpressionConcept<vector_type>::constraints ();
             size_type n (0);
+            size_type i (0);
             // Sizing constructor
             vector_type v (n);
+            // Element support
+            const_pointer p = v.find_element (i);
+
+            ignore_unused_variable_warning (p);
         }
     };
 
@@ -738,6 +745,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef V vector_type;
         typedef typename V::size_type size_type;
         typedef typename V::value_type value_type;
+        typedef value_type *pointer;
 
         static void constraints () {
             VectorConcept<vector_type>::constraints ();
@@ -747,6 +755,8 @@ namespace boost { namespace numeric { namespace ublas {
             size_type i (0);
             // Sizing constructor
             vector_type v (n);
+            // Element support
+            pointer p = v.find_element (i);
             // Element assignment
             value_type r = v.insert_element (i, t);
             v.insert_element (i, t) = r;
@@ -755,6 +765,7 @@ namespace boost { namespace numeric { namespace ublas {
             // Resize
             v.resize (n);
 
+            ignore_unused_variable_warning (p);
             ignore_unused_variable_warning (r);
         }
     };
@@ -791,12 +802,24 @@ namespace boost { namespace numeric { namespace ublas {
     struct MatrixConcept {
         typedef M matrix_type;
         typedef typename M::size_type size_type;
+        typedef typename M::value_type value_type;
+        typedef const value_type *const_pointer;
 
         static void constraints () {
             MatrixExpressionConcept<matrix_type>::constraints ();
             size_type n (0);
+            size_type i (0), j (0);
             // Sizing constructor
             matrix_type m (n, n);
+            // Element support
+#ifndef SKIP_BAD
+            const_pointer p = m.find_element (i, j);
+#else
+            const_pointer p;
+            ignore_unused_variable_warning (i);
+            ignore_unused_variable_warning (j);
+#endif
+            ignore_unused_variable_warning (p);
         }
     };
 
@@ -805,6 +828,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef M matrix_type;
         typedef typename M::size_type size_type;
         typedef typename M::value_type value_type;
+        typedef value_type *pointer;
 
         static void constraints () {
             MatrixConcept<matrix_type>::constraints ();
@@ -814,6 +838,14 @@ namespace boost { namespace numeric { namespace ublas {
             size_type i (0), j (0);
             // Sizing constructor
             matrix_type m (n, n);
+            // Element support
+#ifndef SKIP_BAD
+            pointer p = m.find_element (i, j);
+            ignore_unused_variable_warning (i);
+            ignore_unused_variable_warning (j);
+#else
+            pointer p;
+#endif
             // Element assigment
             value_type r = m.insert_element (i, j, t);
             m.insert_element (i, j, t) = r;
@@ -823,6 +855,7 @@ namespace boost { namespace numeric { namespace ublas {
             m.resize (n, n);
             m.resize (n, n, false);
 
+            ignore_unused_variable_warning (p);
             ignore_unused_variable_warning (r);
         }
     };

@@ -267,6 +267,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
+        typedef const T *const_pointer;
         typedef mapped_vector<T, A> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
@@ -361,8 +362,13 @@ namespace boost { namespace numeric { namespace ublas {
         }
 
         // Element support
+        BOOST_UBLAS_INLINE
         pointer find_element (size_type i) {
-            subiterator_type it (data ().find (i));
+            return const_cast<pointer> (const_cast<const self_type&>(*this).find_element (i));
+        }
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            const_subiterator_type it (data ().find (i));
             if (it == data ().end ())
                 return 0;
             BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // broken map
@@ -725,6 +731,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
+        typedef const T *const_pointer;
         typedef compressed_vector<T, IB, IA, TA> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
@@ -858,8 +865,13 @@ namespace boost { namespace numeric { namespace ublas {
         }
 
         // Element support
+        BOOST_UBLAS_INLINE
         pointer find_element (size_type i) {
-            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            return const_cast<pointer> (const_cast<const self_type&>(*this).find_element (i));
+        }
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            const_subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
             if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return 0;
             return &value_data_ [it - index_data_.begin ()];
@@ -1286,6 +1298,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
+        typedef const T *const_pointer;
         typedef coordinate_vector<T, IB, IA, TA> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
@@ -1442,9 +1455,14 @@ namespace boost { namespace numeric { namespace ublas {
         }
 
         // Element support
+        BOOST_UBLAS_INLINE
         pointer find_element (size_type i) {
+            return const_cast<pointer> (const_cast<const self_type&>(*this).find_element (i));
+        }
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
             sort ();
-            subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
+            const_subiterator_type it (detail::lower_bound (index_data_.begin (), index_data_.begin () + filled_, k_based (i), std::less<size_type> ()));
             if (it == index_data_.begin () + filled_ || *it != k_based (i))
                 return 0;
             return &value_data_ [it - index_data_.begin ()];

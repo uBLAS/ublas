@@ -31,6 +31,7 @@ namespace boost { namespace numeric { namespace ublas {
         public vector_expression<vector<T, A> > {
 
         typedef T *pointer;
+        typedef const T *const_pointer;
         typedef vector<T, A> self_type;
     public:
 #ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
@@ -95,6 +96,16 @@ namespace boost { namespace numeric { namespace ublas {
                 data ().resize (size, typename A::value_type (0));
             else
                 data ().resize (size);
+        }
+
+        // Element support
+        BOOST_UBLAS_INLINE
+        pointer find_element (size_type i) {
+            return const_cast<pointer> (const_cast<const self_type&>(*this).find_element (i));
+        }
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            return & (data () [i]);
         }
 
         // Element access
@@ -560,6 +571,12 @@ namespace boost { namespace numeric { namespace ublas {
             size_ = size;
         }
 
+        // Element support
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            return & zero_;
+        }
+
         // Element access
         BOOST_UBLAS_INLINE
         const_reference operator () (size_type /* i */) const {
@@ -745,6 +762,15 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void resize (size_type size, bool preserve = true) {
             size_ = size;
+        }
+
+        // Element support
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            if (i == index_)
+                return & one_;
+            else
+                return & zero_;
         }
 
         // Element access
@@ -945,6 +971,12 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void resize (size_type size, bool preserve = true) {
             size_ = size;
+        }
+
+        // Element support
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            return & value_;
         }
 
         // Element access
@@ -1189,6 +1221,16 @@ namespace boost { namespace numeric { namespace ublas {
                 bad_size ().raise ();
             std::fill (data_ + (std::min) (size, size_), data_ + size, value_type (0));
             size_ = size;
+        }
+
+        // Element support
+        BOOST_UBLAS_INLINE
+        pointer find_element (size_type i) {
+            return const_cast<pointer> (const_cast<const self_type&>(*this).find_element (i));
+        }
+        BOOST_UBLAS_INLINE
+        const_pointer find_element (size_type i) const {
+            return & data_ [i];
         }
 
         // Element access

@@ -1293,7 +1293,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
-        typedef const T * const_pointer;
+        typedef const T *const_pointer;
         typedef A array_type;
         typedef const A const_array_type;
         typedef L layout_type;
@@ -2466,7 +2466,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
-        typedef const T * const_pointer;
+        typedef const T *const_pointer;
         typedef L layout_type;
         typedef compressed_matrix<T, L, IB, IA, TA> self_type;
     public:
@@ -3778,7 +3778,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef T &true_reference;
         typedef T *pointer;
-        typedef const T * const_pointer;
+        typedef const T *const_pointer;
         typedef L layout_type;
         typedef coordinate_matrix<T, L, IB, IA, TA> self_type;
     public:
