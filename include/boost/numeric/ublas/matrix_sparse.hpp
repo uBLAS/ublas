@@ -50,7 +50,7 @@ namespace boost { namespace numeric { namespace ublas {
         void set (const value_type &s) const {
             pointer p = (*this) ().find_element (i_, j_);
             if (!p)
-                (*this) ().set_element (i_, j_, s);
+                (*this) ().insert_element (i_, j_, s);
             else
                 *p = s;
         }
@@ -262,7 +262,7 @@ namespace boost { namespace numeric { namespace ublas {
         sparse_matrix (size_type size1, size_type size2, size_type non_zeros = 0):
             matrix_expression<self_type> (),
             size1_ (size1), size2_ (size2), data_ () {
-            detail::map_reserve (data (), restrict_nz (non_zeros));
+            detail::map_reserve (data (), restrict_capacity (non_zeros));
         }
         BOOST_UBLAS_INLINE
         sparse_matrix (const sparse_matrix &m):
@@ -273,7 +273,7 @@ namespace boost { namespace numeric { namespace ublas {
         sparse_matrix (const matrix_expression<AE> &ae, size_type non_zeros = 0):
             matrix_expression<self_type> (),
             size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), data_ () {
-            detail::map_reserve (data (), restrict_nz (non_zeros));
+            detail::map_reserve (data (), restrict_capacity (non_zeros));
             matrix_assign<scalar_assign> (*this, ae);
         }
 
@@ -287,9 +287,15 @@ namespace boost { namespace numeric { namespace ublas {
             return size2_;
         }
         BOOST_UBLAS_INLINE
-        size_type non_zeros () const {
+        size_type nnz_capacity () const {
             return detail::map_capacity (data ());
         }
+        BOOST_UBLAS_INLINE
+        size_type nnz () const {
+            return data (). size ();
+        }
+
+        // Storage accessors
         BOOST_UBLAS_INLINE
         const array_type &data () const {
             return data_;
@@ -302,7 +308,7 @@ namespace boost { namespace numeric { namespace ublas {
         // Resizing
     private:
         BOOST_UBLAS_INLINE
-        size_type restrict_nz (size_type non_zeros) const {
+        size_type restrict_capacity (size_type non_zeros) const {
             // Guarding against overflow - thanks to Alexei Novakov for the hint.
             // non_zeros = (std::min) (non_zeros, size1_ * size2_);
             if (size1_ > 0 && non_zeros / size1_ >= size2_)
@@ -322,7 +328,7 @@ namespace boost { namespace numeric { namespace ublas {
         // Reserving
         BOOST_UBLAS_INLINE
         void reserve (size_type non_zeros, bool preserve = true) {
-            detail::map_reserve (data (), restrict_nz (non_zeros));
+            detail::map_reserve (data (), restrict_capacity (non_zeros));
         }
 
         // Element support
@@ -372,7 +378,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element assingment
         BOOST_UBLAS_INLINE
-        true_reference set_element (size_type i, size_type j, const_reference t) {
+        true_reference insert_element (size_type i, size_type j, const_reference t) {
             const size_type element = layout_type::element (i, size1_, j, size2_);
             std::pair<subiterator_type, bool> ii (data ().insert (typename array_type::value_type (element, t)));
             BOOST_UBLAS_CHECK ((ii.first)->first == element, internal_logic ());   // Broken map
@@ -381,7 +387,7 @@ namespace boost { namespace numeric { namespace ublas {
             return (ii.first)->second;
         }
         BOOST_UBLAS_INLINE
-        void zero_element (size_type i, size_type j) {
+        void erase_element (size_type i, size_type j) {
             subiterator_type it = data ().find (layout_type::element (i, size1_, j, size2_));
             if (it == data ().end ())
                 return;
@@ -1327,12 +1333,21 @@ namespace boost { namespace numeric { namespace ublas {
             return size2_;
         }
         BOOST_UBLAS_INLINE
-        size_type non_zeros () const {
+        size_type nnz_capacity () const {
             size_type non_zeros = 0;
             for (vector_const_subiterator_type itv = data_ ().begin (); itv != data_ ().end (); ++ itv)
                 non_zeros += detail::map_capacity (*itv);
             return non_zeros;
         }
+        BOOST_UBLAS_INLINE
+        size_type nnz () const {
+            size_type filled = 0;
+            for (vector_const_subiterator_type itv = data_ ().begin (); itv != data_ ().end (); ++ itv)
+                filled += (*itv).size ();
+            return filled;
+        }
+
+        // Storage accessors
         BOOST_UBLAS_INLINE
         const_array_type &data () const {
             return data_;
@@ -1417,7 +1432,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element assignment
         BOOST_UBLAS_INLINE
-        true_reference set_element (size_type i, size_type j, const_reference t) {
+        true_reference insert_element (size_type i, size_type j, const_reference t) {
             const size_type element1 = layout_type::element1 (i, size1_, j, size2_);
             const size_type element2 = layout_type::element2 (i, size1_, j, size2_);
 
@@ -1429,7 +1444,7 @@ namespace boost { namespace numeric { namespace ublas {
             return (ii.first)->second;
         }
         BOOST_UBLAS_INLINE
-        void zero_element (size_type i, size_type j) {
+        void erase_element (size_type i, size_type j) {
             vector_subiterator_type itv (data ().find (layout_type::element1 (i, size1_, j, size2_)));
             if (itv == data ().end ())
                 return;
@@ -2461,7 +2476,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         compressed_matrix ():
             matrix_expression<self_type> (),
-            size1_ (0), size2_ (0), non_zeros_ (restrict_nz (0)),
+            size1_ (0), size2_ (0), non_zeros_ (restrict_capacity (0)),
             filled1_ (1), filled2_ (0),
             index1_data_ (layout_type::size1 (size1_, size2_) + 1),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
@@ -2470,7 +2485,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         compressed_matrix (size_type size1, size_type size2, size_type non_zeros = 0):
             matrix_expression<self_type> (),
-            size1_ (size1), size2_ (size2), non_zeros_ (restrict_nz (non_zeros)),
+            size1_ (size1), size2_ (size2), non_zeros_ (restrict_capacity (non_zeros)),
             filled1_ (1), filled2_ (0),
             index1_data_ (layout_type::size1 (size1_, size2_) + 1),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
@@ -2489,7 +2504,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         compressed_matrix (const matrix_expression<AE> &ae, size_type non_zeros = 0):
             matrix_expression<self_type> (),
-            size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), non_zeros_ (restrict_nz (non_zeros)),
+            size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), non_zeros_ (restrict_capacity (non_zeros)),
             filled1_ (1), filled2_ (0),
             index1_data_ (layout_type::size1 (ae ().size1 (), ae ().size2 ()) + 1),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
@@ -2507,13 +2522,40 @@ namespace boost { namespace numeric { namespace ublas {
             return size2_;
         }
         BOOST_UBLAS_INLINE
-        size_type non_zeros () const {
+        size_type nnz_capacity () const {
             return non_zeros_;
         }
         BOOST_UBLAS_INLINE
-        size_type filled () const {
+        size_type nnz () const {
             return filled2_;
         }
+        
+        // Storage accessors
+        BOOST_UBLAS_INLINE
+        static size_type index_base () {
+            return IB;
+        }
+        BOOST_UBLAS_INLINE
+        const size_type &filled1 () const {
+            return filled1_;
+        }
+        BOOST_UBLAS_INLINE
+        const size_type &filled2 () const {
+            return filled2_;
+        }
+        BOOST_UBLAS_INLINE
+        const index_array_type &index1_data () const {
+            return index1_data_;
+        }
+        BOOST_UBLAS_INLINE
+        const index_array_type &index2_data () const {
+            return index2_data_;
+        }
+        BOOST_UBLAS_INLINE
+        const value_array_type &value_data () const {
+            return value_data_;
+        }
+        // FIXME provide invariant safe manipulators for filled
         BOOST_UBLAS_INLINE
         size_type &filled1 () {
             return filled1_;
@@ -2523,28 +2565,12 @@ namespace boost { namespace numeric { namespace ublas {
             return filled2_;
         }
         BOOST_UBLAS_INLINE
-        static size_type index_base () {
-            return IB;
-        }
-        BOOST_UBLAS_INLINE
-        const index_array_type &index1_data () const {
-            return index1_data_;
-        }
-        BOOST_UBLAS_INLINE
         index_array_type &index1_data () {
             return index1_data_;
         }
         BOOST_UBLAS_INLINE
-        const index_array_type &index2_data () const {
-            return index2_data_;
-        }
-        BOOST_UBLAS_INLINE
         index_array_type &index2_data () {
             return index2_data_;
-        }
-        BOOST_UBLAS_INLINE
-        const value_array_type &value_data () const {
-            return value_data_;
         }
         BOOST_UBLAS_INLINE
         value_array_type &value_data () {
@@ -2554,7 +2580,7 @@ namespace boost { namespace numeric { namespace ublas {
         // Resizing
     private:
         BOOST_UBLAS_INLINE
-        size_type restrict_nz (size_type non_zeros) const {
+        size_type restrict_capacity (size_type non_zeros) const {
             non_zeros = (std::max) (non_zeros, (std::min) (size1_, size2_));
             // Guarding against overflow - Thanks to Alexei Novakov for the hint.
             // non_zeros = (std::min) (non_zeros, size1_ * size2_);
@@ -2569,7 +2595,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (!preserve, internal_logic ());
             size1_ = size1;
             size2_ = size2;
-            non_zeros_ = restrict_nz (non_zeros_);
+            non_zeros_ = restrict_capacity (non_zeros_);
             filled1_ = 1;
             filled2_ = 0;
             index1_data ().resize (layout_type::size1 (size1_, size2_) + 1);
@@ -2583,7 +2609,7 @@ namespace boost { namespace numeric { namespace ublas {
         // Reserving
         BOOST_UBLAS_INLINE
         void reserve (size_type non_zeros, bool preserve = true) {
-            non_zeros_ = restrict_nz (non_zeros);
+            non_zeros_ = restrict_capacity (non_zeros);
             if (preserve) {
                 index2_data ().resize (non_zeros_, size_type ());
                 value_data ().resize (non_zeros_, value_type ());
@@ -2641,12 +2667,12 @@ namespace boost { namespace numeric { namespace ublas {
             size_type element1 (layout_type::element1 (i, size1_, j, size2_));
             size_type element2 (layout_type::element2 (i, size1_, j, size2_));
             if (filled1_ <= element1 + 1)
-                return set_element (i, j, value_type (0));
+                return insert_element (i, j, value_type (0));
             pointer p = find_element (i, j);
             if (p)
                 return *p;
             else
-                return set_element (i, j, value_type (0));
+                return insert_element (i, j, value_type (0));
 #else
             return reference (*this, i, j);
 #endif
@@ -2654,7 +2680,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element assignment
         BOOST_UBLAS_INLINE
-        true_reference set_element (size_type i, size_type j, const_reference t) {
+        true_reference insert_element (size_type i, size_type j, const_reference t) {
             BOOST_UBLAS_CHECK (index1_data () [filled1_ - 1] == k_based (filled2_), internal_logic ());
             if (filled2_ >= non_zeros_)
                 reserve (2 * filled2_, true);
@@ -2686,7 +2712,7 @@ namespace boost { namespace numeric { namespace ublas {
             return *itt;
         }
         BOOST_UBLAS_INLINE
-        void zero_element (size_type i, size_type j) {
+        void erase_element (size_type i, size_type j) {
             BOOST_UBLAS_CHECK (index1_data () [filled1_ - 1] == k_based (filled2_), internal_logic ());
             size_type element1 = layout_type::element1 (i, size1_, j, size2_);
             size_type element2 = layout_type::element2 (i, size1_, j, size2_);
@@ -3764,14 +3790,14 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         coordinate_matrix ():
             matrix_expression<self_type> (),
-            size1_ (0), size2_ (0), non_zeros_ (restrict_nz (0)),
+            size1_ (0), size2_ (0), non_zeros_ (restrict_capacity (0)),
             filled_ (0),
             sorted_ (true), index1_data_ (non_zeros_),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {}
         BOOST_UBLAS_INLINE
         coordinate_matrix (size_type size1, size_type size2, size_type non_zeros = 0):
             matrix_expression<self_type> (),
-            size1_ (size1), size2_ (size2), non_zeros_ (restrict_nz (non_zeros)),
+            size1_ (size1), size2_ (size2), non_zeros_ (restrict_capacity (non_zeros)),
             filled_ (0),
             sorted_ (true), index1_data_ (non_zeros_),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
@@ -3788,7 +3814,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         coordinate_matrix (const matrix_expression<AE> &ae, size_type non_zeros = 0):
             matrix_expression<self_type> (),
-            size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), non_zeros_ (restrict_nz (non_zeros)),
+            size1_ (ae ().size1 ()), size2_ (ae ().size2 ()), non_zeros_ (restrict_capacity (non_zeros)),
             filled_ (0),
             sorted_ (true), index1_data_ (non_zeros_),
             index2_data_ (non_zeros_), value_data_ (non_zeros_) {
@@ -3805,23 +3831,25 @@ namespace boost { namespace numeric { namespace ublas {
             return size2_;
         }
         BOOST_UBLAS_INLINE
-        size_type non_zeros () const {
+        size_type nnz_capacity () const {
             return non_zeros_;
         }
         BOOST_UBLAS_INLINE
-        size_type filled () const {
+        size_type nnz () const {
             return filled_;
         }
+
+        // Storage accessors
         BOOST_UBLAS_INLINE
         static size_type index_base () {
             return IB;
         }
         BOOST_UBLAS_INLINE
-        const index_array_type &index1_data () const {
-            return index1_data_;
+        const size_type &filled () const {
+            return filled_;
         }
         BOOST_UBLAS_INLINE
-        index_array_type &index1_data () {
+        const index_array_type &index1_data () const {
             return index1_data_;
         }
         BOOST_UBLAS_INLINE
@@ -3829,12 +3857,21 @@ namespace boost { namespace numeric { namespace ublas {
             return index2_data_;
         }
         BOOST_UBLAS_INLINE
-        index_array_type &index2_data () {
-            return index2_data_;
-        }
-        BOOST_UBLAS_INLINE
         const value_array_type &value_data () const {
             return value_data_;
+        }
+        // FIXME provide invariant safe manipulators for filled
+        BOOST_UBLAS_INLINE
+        size_type &filled () {
+            return filled_;
+        }
+        BOOST_UBLAS_INLINE
+        index_array_type &index1_data () {
+            return index1_data_;
+        }
+        BOOST_UBLAS_INLINE
+        index_array_type &index2_data () {
+            return index2_data_;
         }
         BOOST_UBLAS_INLINE
         value_array_type &value_data () {
@@ -3844,7 +3881,7 @@ namespace boost { namespace numeric { namespace ublas {
         // Resizing
     private:
         BOOST_UBLAS_INLINE
-        size_type restrict_nz (size_type non_zeros) const {
+        size_type restrict_capacity (size_type non_zeros) const {
             // minimum non_zeros
             non_zeros = (std::max) (non_zeros, (std::min) (size1_, size2_));
             // ISSUE no maximum as coordinate may contain inserted duplicates
@@ -3857,7 +3894,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (!preserve, internal_logic ());
             size1_ = size1;
             size2_ = size2;
-            non_zeros_ = restrict_nz (non_zeros_);
+            non_zeros_ = restrict_capacity (non_zeros_);
             index1_data ().resize (non_zeros_);
             index2_data ().resize (non_zeros_);
             value_data ().resize (non_zeros_);
@@ -3869,7 +3906,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         void reserve (size_type non_zeros, bool preserve = true) {
             sort ();    // remove duplicate elements
-            non_zeros_ = restrict_nz (non_zeros);
+            non_zeros_ = restrict_capacity (non_zeros);
             if (preserve) {
                 index1_data ().resize (non_zeros_, size_type ());
                 index2_data ().resize (non_zeros_, size_type ());
@@ -3929,7 +3966,7 @@ namespace boost { namespace numeric { namespace ublas {
             if (p)
                 return *p;
             else
-                return set_element (i, j, value_type (0));
+                return insert_element (i, j, value_type (0));
 #else
             return reference (*this, i, j);
 #endif
@@ -3937,7 +3974,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element assignment
         BOOST_UBLAS_INLINE
-        true_reference set_element (size_type i, size_type j, const_reference t) {
+        true_reference insert_element (size_type i, size_type j, const_reference t) {
             if (filled_ >= non_zeros_)
                 reserve (2 * filled_, true);
             BOOST_UBLAS_CHECK (filled_ < non_zeros_, internal_logic ());
@@ -3951,7 +3988,7 @@ namespace boost { namespace numeric { namespace ublas {
             return value_data () [filled_ - 1];
         }
         BOOST_UBLAS_INLINE
-        void zero_element (size_type i, size_type j) {
+        void erase_element (size_type i, size_type j) {
             size_type element1 = layout_type::element1 (i, size1_, j, size2_);
             size_type element2 = layout_type::element2 (i, size1_, j, size2_);
             sort ();
@@ -4074,8 +4111,8 @@ namespace boost { namespace numeric { namespace ublas {
             if (! sorted_ && filled_ > 0) {
                 index_triple_array<index_array_type, index_array_type, value_array_type>
                     ita (filled_, index1_data_, index2_data_, value_data_);
-                // FIXME use stable_sort when index_xx_array works on all compilers
-                std::sort (ita.begin (), ita.end ());    // retain new elements at end
+                // stable_sort to retain new elements at end, also elements will normaly be partialy sorted
+                std::stable_sort (ita.begin (), ita.end ());
                 // remove duplicate element that are earlier in the array.
                 size_type filled = 0;
                 for (size_type i = 1; i < filled_; ++ i) {
