@@ -2556,8 +2556,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         size_type restrict_nz (size_type non_zeros) const {
             non_zeros = (std::max) (non_zeros, (std::min) (size1_, size2_));
-            // Guarding against overflow.
-            // Thanks to Alexei Novakov for the hint.
+            // Guarding against overflow - Thanks to Alexei Novakov for the hint.
             // non_zeros = (std::min) (non_zeros, size1_ * size2_);
             if (size1_ > 0 && non_zeros / size1_ >= size2_)
                 non_zeros = size1_ * size2_;
