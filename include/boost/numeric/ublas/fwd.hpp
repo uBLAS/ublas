@@ -97,7 +97,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     // Sparse vectors
     template<class T, class A = map_std<std::size_t, T> >
-    class sparse_vector;
+    class mapped_vector;
     template<class T, std::size_t IB = 0, class IA = unbounded_array<std::size_t>, class TA = unbounded_array<T> >
     class compressed_vector;
     template<class T, std::size_t IB = 0, class IA = unbounded_array<std::size_t>, class TA = unbounded_array<T> >
@@ -195,9 +195,9 @@ namespace boost { namespace numeric { namespace ublas {
 
     // Sparse matrices
     template<class T, class L = row_major, class A = map_std<std::size_t, T> >
-    class sparse_matrix;
+    class mapped_matrix;
     template<class T, class L = row_major, class A = map_std<std::size_t, map_std<std::size_t, T> > >
-    class sparse_vector_of_sparse_vector;
+    class mapped_vector_of_mapped_vector;
     template<class T, class L = row_major, std::size_t IB = 0, class IA = unbounded_array<std::size_t>, class TA = unbounded_array<T> >
     class compressed_matrix;
     template<class T, class L = row_major, std::size_t IB = 0, class IA = unbounded_array<std::size_t>, class TA = unbounded_array<T> >
