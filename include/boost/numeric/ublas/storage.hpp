@@ -815,9 +815,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     // Range class
     template <class Z, class D>
-    class basic_range:
-        public storage_array<basic_range<Z, D> > {
-
+    class basic_range {
         typedef basic_range<Z, D> self_type;
     public:
         typedef Z size_type;
@@ -1008,9 +1006,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     // Slice class
     template <class Z, class D>
-    class basic_slice:
-        public storage_array<basic_slice<Z, D> > {
-
+    class basic_slice {
         typedef basic_slice<Z, D> self_type;
     public:
         typedef Z size_type;
@@ -1209,9 +1205,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     // Indirect array class
     template<class A>
-    class indirect_array:
-        public storage_array<indirect_array<A> >  {
-
+    class indirect_array {
         typedef indirect_array<A> self_type;
     public:
         typedef A array_type;
