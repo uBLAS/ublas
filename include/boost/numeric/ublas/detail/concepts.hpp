@@ -19,23 +19,6 @@
 
 #include <boost/concept_check.hpp>
 
-// #define INTERNAL_STORAGE
-// #define INTERNAL_STORAGE_SPARSE
-// #define INTERNAL_VECTOR
-// #define INTERNAL_VECTOR_PROXY
-// #define INTERNAL_VECTOR_SPARSE
-// #define INTERNAL_MATRIX
-// #define INTERNAL_MATRIX_PROXY
-// #define INTERNAL_BANDED
-// #define INTERNAL_TRIANGULAR
-// #define INTERNAL_SYMMETRIC
-// #define INTERNAL_HERMITIAN
-// #define INTERNAL_MATRIX_SPARSE
-// #define INTERNAL_VECTOR_EXPRESSION
-// #define INTERNAL_MATRIX_EXPRESSION
-
-// #define EXTERNAL
-
 // Concept checks based on ideas of Jeremy Siek
 
 namespace boost { namespace numeric { namespace ublas {
@@ -1478,49 +1461,54 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Sparse Matrix
 #if defined (INTERNAL) || defined (INTERNAL_MATRIX_SPARSE)
-        SparseMatrixConcept<const mapped_matrix<double> >::constraints ();
-        MutableSparseMatrixConcept<mapped_matrix<double> >::constraints ();
-        IndexedBidirectional2DIteratorConcept<mapped_matrix<double>::const_iterator1,
-                                              mapped_matrix<double>::const_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<mapped_matrix<double>::iterator1,
-                                                     mapped_matrix<double>::iterator2>::constraints ();
-        IndexedBidirectional2DIteratorConcept<mapped_matrix<double>::const_reverse_iterator1,
-                                              mapped_matrix<double>::const_reverse_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<mapped_matrix<double>::reverse_iterator1,
-                                                     mapped_matrix<double>::reverse_iterator2>::constraints ();
+        {
+            typedef mapped_matrix<double> container_model;
+            SparseMatrixConcept<const container_model>::constraints ();
+            MutableSparseMatrixConcept<container_model>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_iterator1, container_model::const_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::iterator1, container_model::iterator2>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
+        }
+        {
+            typedef mapped_vector_of_mapped_vector<double> container_model;
+            SparseMatrixConcept<const container_model>::constraints ();
+            MutableSparseMatrixConcept<container_model>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_iterator1, container_model::const_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::iterator1, container_model::iterator2>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
+        }
+        {
+            typedef compressed_matrix<double> container_model;
+            SparseMatrixConcept<const container_model>::constraints ();
+            MutableSparseMatrixConcept<container_model>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_iterator1, container_model::const_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::iterator1, container_model::iterator2>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
+        }
+        {
+            typedef coordinate_matrix<double> container_model;
+            SparseMatrixConcept<const container_model>::constraints ();
+            MutableSparseMatrixConcept<container_model>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_iterator1, container_model::const_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::iterator1, container_model::iterator2>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
+        }
+#ifdef BOOST_UBLAS_ENABLE_EXPERIMENTAL
+        {
+            typedef generalized_vector_of_vector<double, row_major, vector< coordinate_vector<double> > > container_model;
+            SparseMatrixConcept<const container_model>::constraints ();
+            MutableSparseMatrixConcept<container_model>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_iterator1, container_model::const_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::iterator1, container_model::iterator2>::constraints ();
+            IndexedBidirectional2DIteratorConcept<container_model::const_reverse_iterator1, container_model::const_reverse_iterator2>::constraints ();
+            MutableIndexedBidirectional2DIteratorConcept<container_model::reverse_iterator1, container_model::reverse_iterator2>::constraints ();
+        }
+#endif
 
-        SparseMatrixConcept<const mapped_vector_of_mapped_vector<double> >::constraints ();
-        MutableSparseMatrixConcept<mapped_vector_of_mapped_vector<double> >::constraints ();
-        IndexedBidirectional2DIteratorConcept<mapped_vector_of_mapped_vector<double>::const_iterator1,
-                                              mapped_vector_of_mapped_vector<double>::const_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<mapped_vector_of_mapped_vector<double>::iterator1,
-                                                     mapped_vector_of_mapped_vector<double>::iterator2>::constraints ();
-        IndexedBidirectional2DIteratorConcept<mapped_vector_of_mapped_vector<double>::const_reverse_iterator1,
-                                              mapped_vector_of_mapped_vector<double>::const_reverse_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<mapped_vector_of_mapped_vector<double>::reverse_iterator1,
-                                                     mapped_vector_of_mapped_vector<double>::reverse_iterator2>::constraints ();
-
-        SparseMatrixConcept<const compressed_matrix<double> >::constraints ();
-        MutableSparseMatrixConcept<compressed_matrix<double> >::constraints ();
-        IndexedBidirectional2DIteratorConcept<compressed_matrix<double>::const_iterator1,
-                                              compressed_matrix<double>::const_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<compressed_matrix<double>::iterator1,
-                                                     compressed_matrix<double>::iterator2>::constraints ();
-        IndexedBidirectional2DIteratorConcept<compressed_matrix<double>::const_reverse_iterator1,
-                                              compressed_matrix<double>::const_reverse_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<compressed_matrix<double>::reverse_iterator1,
-                                                     compressed_matrix<double>::reverse_iterator2>::constraints ();
-
-        SparseMatrixConcept<const coordinate_matrix<double> >::constraints ();
-        MutableSparseMatrixConcept<coordinate_matrix<double> >::constraints ();
-        IndexedBidirectional2DIteratorConcept<coordinate_matrix<double>::const_iterator1,
-                                              coordinate_matrix<double>::const_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<coordinate_matrix<double>::iterator1,
-                                                     coordinate_matrix<double>::iterator2>::constraints ();
-        IndexedBidirectional2DIteratorConcept<coordinate_matrix<double>::const_reverse_iterator1,
-                                              coordinate_matrix<double>::const_reverse_iterator2>::constraints ();
-        MutableIndexedBidirectional2DIteratorConcept<coordinate_matrix<double>::reverse_iterator1,
-                                                     coordinate_matrix<double>::reverse_iterator2>::constraints ();
 #endif
 
         // Scalar Expressions
