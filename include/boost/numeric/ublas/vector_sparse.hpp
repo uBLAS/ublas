@@ -135,10 +135,50 @@ namespace boost { namespace numeric { namespace ublas {
             return d_;
         }
 
+        // Conversion to reference - may be invalidated
+        BOOST_UBLAS_INLINE
+        value_type& ref () const {
+            pointer p = (*this) ().find_element (i_);
+            if (!p)
+                (*this) ().insert_element (i_, value_type (0));
+            return *p;
+        }
+
     private:
         size_type i_;
         mutable value_type d_;
     };
+
+    /*
+     * Generalise explicit reference access
+     */
+    namespace detail {
+        template <class R>
+        struct vector_element_reference {
+            typedef R& reference;
+            static reference element_reference (reference r)
+            {
+                return r;
+            }
+        };
+        template <class V>
+        struct vector_element_reference<sparse_vector_element<V> > {
+            typedef typename V::value_type& reference;
+            static reference element_reference (const sparse_vector_element<V>& sve)
+            {
+                return sve.ref ();
+            }
+        };
+    }
+    template <class VER>
+    typename detail::vector_element_reference<VER>::reference ref (VER& ver) {
+        return detail::vector_element_reference<VER>::element_reference (ver);
+    }
+    template <class VER>
+    typename detail::vector_element_reference<VER>::reference ref (const VER& ver) {
+        return detail::vector_element_reference<VER>::element_reference (ver);
+    }
+
 
     template<class V>
     struct type_traits<sparse_vector_element<V> > {
@@ -325,7 +365,7 @@ namespace boost { namespace numeric { namespace ublas {
             subiterator_type it (data ().find (i));
             if (it == data ().end ())
                 return 0;
-            BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // broken map
             return &(*it).second;
         }
 
@@ -336,17 +376,22 @@ namespace boost { namespace numeric { namespace ublas {
             const_subiterator_type it (data ().find (i));
             if (it == data ().end ())
                 return zero_;
-            BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // broken map
             return (*it).second;
         }
         BOOST_UBLAS_INLINE
-        reference operator () (size_type i) {
+        true_reference ref (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
-#ifndef BOOST_UBLAS_STRICT_VECTOR_SPARSE
             std::pair<subiterator_type, bool> ii (data ().insert (typename array_type::value_type (i, value_type (0))));
-            BOOST_UBLAS_CHECK ((ii->first).first == i, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((ii->first).first == i, internal_logic ());   // broken map
             return (ii.first)->second;
+        }
+        BOOST_UBLAS_INLINE
+        reference operator () (size_type i) {
+#ifndef BOOST_UBLAS_STRICT_VECTOR_SPARSE
+            return ref (i);
 #else
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
             return reference (*this, i);
 #endif
         }
@@ -365,7 +410,7 @@ namespace boost { namespace numeric { namespace ublas {
         true_reference insert_element (size_type i, const_reference t) {
             std::pair<subiterator_type, bool> ii = data ().insert (typename array_type::value_type (i, t));
             BOOST_UBLAS_CHECK (ii.second, bad_index ());		// duplicate element
-            BOOST_UBLAS_CHECK ((ii.first)->first == i, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((ii.first)->first == i, internal_logic ());   // broken map
             if (!ii.second)     // existing element
                 (ii.first)->second = t;
             return (ii.first)->second;
@@ -471,7 +516,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             subiterator_type it (data ().find (i));
             BOOST_UBLAS_CHECK (it != data ().end(), bad_index ());
-            BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // Broken map
+            BOOST_UBLAS_CHECK ((*it).first == i, internal_logic ());   // broken map
             return it->second;
         }
 
@@ -831,15 +876,20 @@ namespace boost { namespace numeric { namespace ublas {
             return value_data () [it - index_data ().begin ()];
         }
         BOOST_UBLAS_INLINE
-        reference operator () (size_type i) {
+        true_reference ref (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
-#ifndef BOOST_UBLAS_STRICT_VECTOR_SPARSE
             subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
             if (it == index_data ().begin () + filled_ || *it != k_based (i))
                 return insert_element (i, value_type (0));
             else
                 return value_data () [it - index_data ().begin ()];
+        }
+        BOOST_UBLAS_INLINE
+        reference operator () (size_type i) {
+#ifndef BOOST_UBLAS_STRICT_VECTOR_SPARSE
+            return ref (i) ;
 #else
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
             return reference (*this, i);
 #endif
         }
@@ -1387,16 +1437,21 @@ namespace boost { namespace numeric { namespace ublas {
             return value_data () [it - index_data ().begin ()];
         }
         BOOST_UBLAS_INLINE
-        reference operator () (size_type i) {
+        true_reference ref (size_type i) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
-#ifndef BOOST_UBLAS_STRICT_VECTOR_SPARSE
             sort ();
             subiterator_type it (detail::lower_bound (index_data ().begin (), index_data ().begin () + filled_, k_based (i), std::less<size_type> ()));
             if (it == index_data ().begin () + filled_ || *it != k_based (i))
                 return insert_element (i, value_type (0));
             else
                 return value_data () [it - index_data ().begin ()];
+        }
+        BOOST_UBLAS_INLINE
+        reference operator () (size_type i) {
+#ifndef BOOST_UBLAS_STRICT_VECTOR_SPARSE
+            return ref (i);
 #else
+            BOOST_UBLAS_CHECK (i < size_, bad_index ());
             return reference (*this, i);
 #endif
         }
