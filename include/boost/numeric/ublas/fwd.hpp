@@ -17,6 +17,7 @@
 #ifndef BOOST_UBLAS_FWD_H
 #define BOOST_UBLAS_FWD_H
 
+#include <memory>
 
 namespace boost { namespace numeric { namespace ublas {
 

@@ -22,7 +22,8 @@
 #include <boost/shared_array.hpp>
 #endif
 
-#include <boost/numeric/ublas/detail/config.hpp>
+#include <boost/numeric/ublas/exception.hpp>
+#include <boost/numeric/ublas/detail/iterator.hpp>
 
 
 namespace boost { namespace numeric { namespace ublas {

@@ -17,7 +17,6 @@
 #ifndef BOOST_UBLAS_OPERATION_SPARSE_H
 #define BOOST_UBLAS_OPERATION_SPARSE_H
 
-#include <boost/numeric/ublas/config.hpp>
 #include <boost/numeric/ublas/traits.hpp>
 
 // These scaled additions were borrowed from MTL unashamedly.
@@ -172,7 +171,7 @@ namespace boost { namespace numeric { namespace ublas {
             m.assign (zero_matrix<value_type> (e1 ().size1 (), e2 ().size2 ()));
         return sparse_prod (e1, e2, m, triangular_restriction (), orientation_category ());
     }
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M
     sparse_prod (const matrix_expression<E1> &e1,

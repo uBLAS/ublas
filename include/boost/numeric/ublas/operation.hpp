@@ -21,7 +21,6 @@
 #ifndef BOOST_UBLAS_OPERATION_H
 #define BOOST_UBLAS_OPERATION_H
 
-#include <boost/numeric/ublas/config.hpp>
 #include <boost/numeric/ublas/traits.hpp>
 
 // axpy-based products
@@ -68,14 +67,14 @@ namespace boost { namespace numeric { namespace ublas {
     }
 
     // Dispatcher
-    template<class V, class T1, class L, class IA1, class TA1, class E2>
+    template<class V, class T1, class L1, class IA1, class TA1, class E2>
     BOOST_UBLAS_INLINE
     V &
-    axpy_prod (const compressed_matrix<T1, L, 0, IA1, TA1> &e1,
+    axpy_prod (const compressed_matrix<T1, L1, 0, IA1, TA1> &e1,
                const vector_expression<E2> &e2,
                V &v, bool init = true) {
         typedef typename V::value_type value_type;
-        typedef typename F1::orientation_category orientation_category;
+        typedef typename L1::orientation_category orientation_category;
 
         if (init)
             v.assign (zero_vector<value_type> (e1.size1 ()));
@@ -91,10 +90,10 @@ namespace boost { namespace numeric { namespace ublas {
 #endif
         return v;
     }
-    template<class V, class T1, class L, class IA1, class TA1, class E2>
+    template<class V, class T1, class L1, class IA1, class TA1, class E2>
     BOOST_UBLAS_INLINE
     V
-    axpy_prod (const compressed_matrix<T1, L, 0, IA1, TA1> &e1,
+    axpy_prod (const compressed_matrix<T1, L1, 0, IA1, TA1> &e1,
                const vector_expression<E2> &e2) {
         typedef V vector_type;
 
@@ -298,10 +297,10 @@ namespace boost { namespace numeric { namespace ublas {
     BOOST_UBLAS_INLINE
     V &
     axpy_prod (const vector_expression<E1> &e1,
-               const compressed_matrix<L2, F2, 0, IA2, TA2> &e2,
+               const compressed_matrix<T2, L2, 0, IA2, TA2> &e2,
                V &v, bool init = true) {
         typedef typename V::value_type value_type;
-        typedef typename F2::orientation_category orientation_category;
+        typedef typename L2::orientation_category orientation_category;
 
         if (init)
             v.assign (zero_vector<value_type> (e2 ().size2 ()));
@@ -511,7 +510,7 @@ namespace boost { namespace numeric { namespace ublas {
 #endif
         return m;
     }
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M &
     axpy_prod (const matrix_expression<E1> &e1,
@@ -561,7 +560,7 @@ namespace boost { namespace numeric { namespace ublas {
         return m;
     }
 
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M &
     axpy_prod (const matrix_expression<E1> &e1,
@@ -590,7 +589,7 @@ namespace boost { namespace numeric { namespace ublas {
 #endif
         return m;
     }
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M &
     axpy_prod (const matrix_expression<E1> &e1,
@@ -646,7 +645,7 @@ namespace boost { namespace numeric { namespace ublas {
     M &
     axpy_prod (const matrix_expression<E1> &e1,
                const matrix_expression<E2> &e2,
-               M &m, F, bool init = true) {
+               M &m, TRI, bool init = true) {
         typedef typename M::value_type value_type;
         typedef typename M::storage_category storage_category;
         typedef typename M::orientation_category orientation_category;
@@ -656,7 +655,7 @@ namespace boost { namespace numeric { namespace ublas {
             m.assign (zero_matrix<value_type> (e1 ().size1 (), e2 ().size2 ()));
         return axpy_prod (e1, e2, m, triangular_restriction (), storage_category (), orientation_category ());
     }
-    template<class M, class E1, class E2, class F>
+    template<class M, class E1, class E2, class TRI>
     BOOST_UBLAS_INLINE
     M
     axpy_prod (const matrix_expression<E1> &e1,
@@ -786,33 +785,6 @@ namespace boost { namespace numeric { namespace ublas {
     }
 
     // Dispatcher
-    template<class M, class E1, class E2>
-    BOOST_UBLAS_INLINE
-    M &
-    opb_prod (const matrix_expression<E1> &e1,
-              const matrix_expression<E2> &e2,
-              M &m, bool init = true) {
-        typedef typename M::value_type value_type;
-        typedef typename M::storage_category storage_category;
-        typedef typename M::orientation_category orientation_category;
-        typedef F functor_type;
-
-        if (init)
-            m.assign (zero_matrix<value_type> (e1 ().size1 (), e2 ().size2 ()));
-        return opb_prod (e1, e2, m, functor_type (), storage_category (), orientation_category ());
-    }
-    template<class M, class E1, class E2>
-    BOOST_UBLAS_INLINE
-    M
-    opb_prod (const matrix_expression<E1> &e1,
-              const matrix_expression<E2> &e2) {
-        typedef M matrix_type;
-
-        matrix_type m (e1 ().size1 (), e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
-        // return opb_prod (e1, e2, m, false);
-        return opb_prod (e1, e2, m, true);
-    }
 
   /** \brief computes <tt>M += A X</tt> or <tt>M = A X</tt> in an
           optimized fashion.

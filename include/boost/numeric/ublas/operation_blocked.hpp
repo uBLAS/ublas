@@ -17,7 +17,6 @@
 #ifndef BOOST_UBLAS_OPERATION_BLOCKED_H
 #define BOOST_UBLAS_OPERATION_BLOCKED_H
 
-#include <boost/numeric/ublas/config.hpp>
 #include <boost/numeric/ublas/traits.hpp>
 
 
