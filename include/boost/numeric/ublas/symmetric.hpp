@@ -168,12 +168,8 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element assignment
         BOOST_UBLAS_INLINE
-        reference set_element (size_type i, size_type j, const_reference t) {
+        reference insert_element (size_type i, size_type j, const_reference t) {
             return (operator () (i, j) = t);
-        }
-        BOOST_UBLAS_INLINE
-        void zero_element (size_type i, size_type j) {
-            operator () (i, j) = value_type (0);
         }
         
         // Zeroing
