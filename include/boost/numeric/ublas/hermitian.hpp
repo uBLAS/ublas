@@ -63,7 +63,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         ~hermitian_matrix_element () {
             if (dirty_)
-                (*this) ().set_element (i_, j_, d_);
+                (*this) ().insert_element (i_, j_, d_);
         }
 
         // Assignment
@@ -375,7 +375,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Element assignemnt
         BOOST_UBLAS_INLINE
-        true_reference set_element (size_type i, size_type j, const_reference t) {
+        true_reference insert_element (size_type i, size_type j, const_reference t) {
             BOOST_UBLAS_CHECK (i < size_, bad_index ());
             BOOST_UBLAS_CHECK (j < size_, bad_index ());
             if (triangular_type::other (i, j)) {
