@@ -27,6 +27,7 @@
 #include <boost/mpl/if.hpp>
 #include <boost/mpl/and.hpp>
 #include <boost/type_traits/is_same.hpp>
+#include <boost/type_traits/is_convertible.hpp>
 #include <boost/type_traits/is_const.hpp>
 #include <boost/type_traits/remove_reference.hpp>
 
