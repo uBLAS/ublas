@@ -33,7 +33,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef E expression_type;
         typedef matrix_tag type_category;
         typedef abstract_tag simd_category;
-        // FIXME: Template instantiation order problem
+        // FIXME Template instantiation order problem
         // typedef typename E::size_type size_type;
         typedef std::size_t size_type;
         typedef noalias_proxy<E> noalias_proxy_type;
@@ -1804,12 +1804,11 @@ namespace boost { namespace numeric { namespace ublas {
     template<class E, class F>
     struct matrix_unary2_traits {
         typedef matrix_unary2<E, F> expression_type;
-//FIXME
-// #ifndef BOOST_UBLAS_SIMPLE_ET_DEBUG
-        typedef expression_type result_type;
-// #else
-//         typedef typename E::matrix_temporary_type result_type;
-// #endif
+#ifndef BOOST_UBLAS_SIMPLE_ET_DEBUG
+        typedef expression_type result_type; 
+#else
+        typedef typename E::matrix_temporary_type result_type;
+#endif
     };
 
     // (trans m) [i] [j] = m [j] [i]
@@ -2713,7 +2712,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             difference_type operator - (const const_iterator1 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ - it.it2_;
             }
@@ -2778,14 +2777,14 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             bool operator == (const const_iterator1 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ == it.it2_;
             }
             BOOST_UBLAS_INLINE
             bool operator < (const const_iterator1 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ < it.it2_;
             }
@@ -2852,7 +2851,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             difference_type operator - (const const_iterator2 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ - it.it2_;
             }
@@ -2917,14 +2916,14 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             bool operator == (const const_iterator2 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ == it.it2_;
             }
             BOOST_UBLAS_INLINE
             bool operator < (const const_iterator2 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ < it.it2_;
             }
@@ -3151,7 +3150,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             difference_type operator - (const const_iterator1 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ - it.it1_;
             }
@@ -3216,14 +3215,14 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             bool operator == (const const_iterator1 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ == it.it1_;
             }
             BOOST_UBLAS_INLINE
             bool operator < (const const_iterator1 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ < it.it1_;
             }
@@ -3290,7 +3289,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             difference_type operator - (const const_iterator2 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ - it.it1_;
             }
@@ -3355,14 +3354,14 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             bool operator == (const const_iterator2 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ == it.it1_;
             }
             BOOST_UBLAS_INLINE
             bool operator < (const const_iterator2 &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ < it.it1_;
             }
@@ -4326,13 +4325,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Element lookup
         BOOST_UBLAS_INLINE
         const_iterator1 find1 (int /* rank */, size_type i, size_type j) const {
-            // FIXME: sparse matrix tests fail!
+            // FIXME sparse matrix tests fail!
             // const_iterator11_type it11 (e1_.find1 (rank, i, 0));
             const_iterator11_type it11 (e1_.find1 (0, i, 0));
 #ifdef BOOST_UBLAS_USE_INDEXED_ITERATOR
             return const_iterator1 (*this, it11.index1 (), j);
 #else
-            // FIXME: sparse matrix tests fail!
+            // FIXME sparse matrix tests fail!
             // const_iterator22_type it22 (e2_.find2 (rank, 0, j));
             const_iterator22_type it22 (e2_.find2 (0, 0, j));
             return const_iterator1 (*this, it11, it22);
@@ -4340,13 +4339,13 @@ namespace boost { namespace numeric { namespace ublas {
         }
         BOOST_UBLAS_INLINE
         const_iterator2 find2 (int /* rank */, size_type i, size_type j) const {
-            // FIXME: sparse matrix tests fail!
+            // FIXME sparse matrix tests fail!
             // const_iterator22_type it22 (e2_.find2 (rank, 0, j));
             const_iterator22_type it22 (e2_.find2 (0, 0, j));
 #ifdef BOOST_UBLAS_USE_INDEXED_ITERATOR
             return const_iterator2 (*this, i, it22.index2 ());
 #else
-            // FIXME: sparse matrix tests fail!
+            // FIXME sparse matrix tests fail!
             // const_iterator11_type it11 (e1_.find1 (rank, i, 0));
             const_iterator11_type it11 (e1_.find1 (0, i, 0));
             return const_iterator2 (*this, it11, it22);

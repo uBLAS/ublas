@@ -2639,7 +2639,6 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         reference operator () (size_type i, size_type j) {
 #ifndef BOOST_UBLAS_STRICT_MATRIX_SPARSE
-            // FIXME more new element handler to operator ()
             size_type element1 (layout_type::element1 (i, size1_, j, size2_));
             size_type element2 (layout_type::element2 (i, size1_, j, size2_));
             if (filled1_ <= element1 + 1)

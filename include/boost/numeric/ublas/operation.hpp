@@ -98,7 +98,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef V vector_type;
 
         vector_type v (e1.size1 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return axpy_prod (e1, e2, v, false);
         return axpy_prod (e1, e2, v, true);
     }
@@ -250,7 +250,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef V vector_type;
 
         vector_type v (e1 ().size1 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return axpy_prod (e1, e2, v, false);
         return axpy_prod (e1, e2, v, true);
     }
@@ -324,7 +324,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef V vector_type;
 
         vector_type v (e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return axpy_prod (e1, e2, v, false);
         return axpy_prod (e1, e2, v, true);
     }
@@ -476,7 +476,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef V vector_type;
 
         vector_type v (e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return axpy_prod (e1, e2, v, false);
         return axpy_prod (e1, e2, v, true);
     }
@@ -665,7 +665,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef TRI triangular_restriction;
 
         matrix_type m (e1 ().size1 (), e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return axpy_prod (e1, e2, m, triangular_restriction (), false);
         return axpy_prod (e1, e2, m, triangular_restriction (), true);
     }
@@ -716,7 +716,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef M matrix_type;
 
         matrix_type m (e1 ().size1 (), e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return axpy_prod (e1, e2, m, full (), false);
         return axpy_prod (e1, e2, m, full (), true);
     }
@@ -834,7 +834,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef M matrix_type;
 
         matrix_type m (e1 ().size1 (), e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return opb_prod (e1, e2, m, false);
         return opb_prod (e1, e2, m, true);
     }

@@ -1273,7 +1273,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             difference_type operator - (const const_iterator &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ - it.it2_;
             }
@@ -1303,14 +1303,14 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             bool operator == (const const_iterator &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ == it.it2_;
             }
             BOOST_UBLAS_INLINE
             bool operator < (const const_iterator &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it1_ == it.it1_, external_logic ());
                 return it2_ < it.it2_;
             }
@@ -1509,7 +1509,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             difference_type operator - (const const_iterator &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ - it.it1_;
             }
@@ -1539,14 +1539,14 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_INLINE
             bool operator == (const const_iterator &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ == it.it1_;
             }
             BOOST_UBLAS_INLINE
             bool operator < (const const_iterator &it) const {
                 BOOST_UBLAS_CHECK ((*this) ().same_closure (it ()), external_logic ());
-                // FIXME: we shouldn't compare floats
+                // FIXME we shouldn't compare floats
                 // BOOST_UBLAS_CHECK (it2_ == it.it2_, external_logic ());
                 return it1_ < it.it1_;
             }

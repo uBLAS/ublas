@@ -133,15 +133,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         vector_range &operator = (const vector_range &vr) {
-            // FIXME: the ranges could be differently sized.
-            // std::copy (vr.begin (), vr.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (vr));
             return *this;
         }
         BOOST_UBLAS_INLINE
         vector_range &assign_temporary (vector_range &vr) {
-            // FIXME: this is suboptimal.
-            // return *this = vr;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, vr);
             return *this;
         }
@@ -623,15 +621,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         vector_slice &operator = (const vector_slice &vs) {
-            // FIXME: the slices could be differently sized.
-            // std::copy (vs.begin (), vs.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (vs));
             return *this;
         }
         BOOST_UBLAS_INLINE
         vector_slice &assign_temporary (vector_slice &vs) {
-            // FIXME: this is suboptimal.
-            // return *this = vs;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, vs);
             return *this;
         }
@@ -1126,15 +1122,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         vector_indirect &operator = (const vector_indirect &vi) {
-            // FIXME: the indirect_arrays could be differently sized.
-            // std::copy (vi.begin (), vi.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (vi));
             return *this;
         }
         BOOST_UBLAS_INLINE
         vector_indirect &assign_temporary (vector_indirect &vi) {
-            // FIXME: this is suboptimal.
-            // return *this = vi;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, vi);
             return *this;
         }

@@ -115,15 +115,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         matrix_row &operator = (const matrix_row &mr) {
-            // FIXME: the rows could be differently sized.
-            // std::copy (mr.begin (), mr.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (mr));
             return *this;
         }
         BOOST_UBLAS_INLINE
         matrix_row &assign_temporary (matrix_row &mr) {
-            // FIXME: this is suboptimal.
-            // return *this = mr;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, mr);
             return *this;
         }
@@ -572,15 +570,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         matrix_column &operator = (const matrix_column &mc) {
-            // FIXME: the columns could be differently sized.
-            // std::copy (mc.begin (), mc.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (mc));
             return *this;
         }
         BOOST_UBLAS_INLINE
         matrix_column &assign_temporary (matrix_column &mc) {
-            // FIXME: this is suboptimal.
-            // return *this = mc;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, mc);
             return *this;
         }
@@ -1037,15 +1033,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         matrix_vector_range &operator = (const matrix_vector_range &mvr) {
-            // FIXME: the ranges could be differently sized.
-            // std::copy (mvr.begin (), mvr.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (mvr));
             return *this;
         }
         BOOST_UBLAS_INLINE
         matrix_vector_range &assign_temporary (matrix_vector_range &mvr) {
-            // FIXME: this is suboptimal.
-            // return *this = mvr;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, mvr);
             return *this;
         }
@@ -1491,15 +1485,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         matrix_vector_slice &operator = (const matrix_vector_slice &mvs) {
-            // FIXME: the slices could be differently sized.
-            // std::copy (mvs.begin (), mvs.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (mvs));
             return *this;
         }
         BOOST_UBLAS_INLINE
         matrix_vector_slice &assign_temporary (matrix_vector_slice &mvs) {
-            // FIXME: this is suboptimal.
-            // return *this = mvs;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, mvs);
             return *this;
         }
@@ -1945,15 +1937,13 @@ namespace boost { namespace numeric { namespace ublas {
         // Assignment
         BOOST_UBLAS_INLINE
         matrix_vector_indirect &operator = (const matrix_vector_indirect &mvi) {
-            // FIXME: the indirects could be differently sized.
-            // std::copy (mvi.begin (), mvi.end (), begin ());
+            // ISSUE need a temporary, proxy can be overlaping alias
             vector_assign<scalar_assign> (*this, vector_temporary_type (mvi));
             return *this;
         }
         BOOST_UBLAS_INLINE
         matrix_vector_indirect &assign_temporary (matrix_vector_indirect &mvi) {
-            // FIXME: this is suboptimal.
-            // return *this = mvi;
+            // assign elements, proxied container remains the same
             vector_assign<scalar_assign> (*this, mvi);
             return *this;
         }

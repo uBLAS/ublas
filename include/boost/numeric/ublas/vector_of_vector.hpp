@@ -258,7 +258,7 @@ namespace boost { namespace numeric { namespace ublas {
                 data ().insert (functor_type::element1 (i, size1_, j, size2_), vector_data_value_type (functor_type::size2 (size1_, size2_)));
                 itv = data ().find (functor_type::element1 (i, size1_, j, size2_));
             }
-            // FIXME: should be allowed for coordinate_vector.
+            // FIXME should be allowed for coordinate_vector.
             // BOOST_UBLAS_CHECK (static_cast<vector_data_value_type &> (*itv).find (functor_type::element2 (i, size1_, j, size2_)) == static_cast<vector_data_value_type &> (*itv).end (), bad_index ());
             static_cast<vector_data_value_type &> (*itv).insert (functor_type::element2 (i, size1_, j, size2_), t);
         }

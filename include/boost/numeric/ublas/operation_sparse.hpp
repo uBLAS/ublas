@@ -73,9 +73,9 @@ namespace boost { namespace numeric { namespace ublas {
             }
             for (size_type j = jb; j < je + 1; ++ j) {
                 if (temporary (j) != value_type (0)) {
-                    // FIXME: we'll need to extend the container interface!
+                    // FIXME we'll need to extend the container interface!
                     // m.push_back (it1.index1 (), j, temporary (j));
-                    // FIXME: What to do with adaptors?
+                    // FIXME What to do with adaptors?
                     // m.insert (it1.index1 (), j, temporary (j));
                     if (triangular_restriction::other (it1.index1 (), j))
                         m (it1.index1 (), j) = temporary (j);
@@ -139,9 +139,9 @@ namespace boost { namespace numeric { namespace ublas {
             }
             for (size_type i = ib; i < ie + 1; ++ i) {
                 if (temporary (i) != value_type (0)) {
-                    // FIXME: we'll need to extend the container interface!
+                    // FIXME we'll need to extend the container interface!
                     // m.push_back (i, it2.index2 (), temporary (i));
-                    // FIXME: What to do with adaptors?
+                    // FIXME What to do with adaptors?
                     // m.insert (i, it2.index2 (), temporary (i));
                     if (triangular_restriction::other (i, it2.index2 ()))
                         m (i, it2.index2 ()) = temporary (i);
@@ -181,7 +181,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef TRI triangular_restriction;
 
         matrix_type m (e1 ().size1 (), e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return sparse_prod (e1, e2, m, triangular_restriction (), false);
         return sparse_prod (e1, e2, m, triangular_restriction (), true);
     }
@@ -206,7 +206,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef M matrix_type;
 
         matrix_type m (e1 ().size1 (), e2 ().size2 ());
-        // FIXME: needed for c_matrix?!
+        // FIXME needed for c_matrix?!
         // return sparse_prod (e1, e2, m, full (), false);
         return sparse_prod (e1, e2, m, full (), true);
     }

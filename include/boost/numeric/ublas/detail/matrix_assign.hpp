@@ -1233,7 +1233,7 @@ namespace boost { namespace numeric { namespace ublas {
                                               assign_category,
                                               typename E::const_iterator1::iterator_category,
                                               typename E::const_iterator2::iterator_category>::storage_category storage_category;
-        // give preference to matrix orientation if known
+        // give preference to matrix M's orientation if known
         typedef typename boost::mpl::if_<boost::is_same<typename M::orientation_category, unknown_orientation_tag>,
                                           typename E::orientation_category ,
                                           typename M::orientation_category >::type orientation_category;
@@ -1249,7 +1249,7 @@ namespace boost { namespace numeric { namespace ublas {
                                               assign_category,
                                               typename E::const_iterator1::iterator_category,
                                               typename E::const_iterator2::iterator_category>::storage_category storage_category;
-        // give preference to matrix orientation if known
+        // give preference to matrix M's orientation if known
         typedef typename boost::mpl::if_<boost::is_same<typename M::orientation_category, unknown_orientation_tag>,
                                           typename E::orientation_category ,
                                           typename M::orientation_category >::type orientation_category;
@@ -1388,7 +1388,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_CHECK (m.size2 () == e ().size2 (), bad_size ());
 
         make_conformant (m, e, row_major_tag (), conformant_restrict_type ());
-        // FIXME should be restriction for E
+        // FIXME should be a seperate restriction for E
         make_conformant (e (), m, row_major_tag (), conformant_restrict_type ());
 
         typename M::iterator1 it1 (m.begin1 ());
@@ -1513,7 +1513,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_CHECK (m.size2 () == e ().size2 (), bad_size ());
 
         make_conformant (m, e, column_major_tag (), conformant_restrict_type ());
-        // FIXME should be restriction for E
+        // FIXME should be a seperate restriction for E
         make_conformant (e (), m, column_major_tag (), conformant_restrict_type ());
 
         typename M::iterator2 it2 (m.begin2 ());
@@ -1633,9 +1633,10 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename matrix_swap_traits<typename M::storage_category,
                                             typename E::const_iterator1::iterator_category,
                                             typename E::const_iterator2::iterator_category>::storage_category storage_category;
-        // FIXME: can't we improve the dispatch here?
-        // typedef typename E::orientation_category orientation_category;
-        typedef typename M::orientation_category orientation_category;
+        // give preference to matrix M's orientation if known
+        typedef typename boost::mpl::if_<boost::is_same<typename M::orientation_category, unknown_orientation_tag>,
+                                          typename E::orientation_category ,
+                                          typename M::orientation_category >::type orientation_category;
         typedef basic_full<typename M::size_type> unrestricted;
         matrix_swap<F, unrestricted> (m, e, storage_category (), orientation_category ());
     }
@@ -1646,9 +1647,10 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename matrix_swap_traits<typename M::storage_category,
                                             typename E::const_iterator1::iterator_category,
                                             typename E::const_iterator2::iterator_category>::storage_category storage_category;
-        // FIXME: can't we improve the dispatch here?
-        // typedef typename E::orientation_category orientation_category;
-        typedef typename M::orientation_category orientation_category;
+        // give preference to matrix M's orientation if known
+        typedef typename boost::mpl::if_<boost::is_same<typename M::orientation_category, unknown_orientation_tag>,
+                                          typename E::orientation_category ,
+                                          typename M::orientation_category >::type orientation_category;
         matrix_swap<F, conformant_restrict_type> (m, e, storage_category (), orientation_category ());
     }
 

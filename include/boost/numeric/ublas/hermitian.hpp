@@ -245,7 +245,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename A::size_type size_type;
         typedef typename A::difference_type difference_type;
         typedef T value_type;
-        // FIXME: no better way to not return the address of a temporary?
+        // FIXME no better way to not return the address of a temporary?
         // typedef const T &const_reference;
         typedef const T const_reference;
 #ifndef BOOST_UBLAS_STRICT_HERMITIAN
@@ -1461,7 +1461,7 @@ namespace boost { namespace numeric { namespace ublas {
                                                       dense_random_access_iterator_tag>::iterator_category iterator_category;
             typedef typename const_subiterator1_type::value_type value_type;
             typedef typename const_subiterator1_type::difference_type difference_type;
-            // FIXME: no better way to not return the address of a temporary?
+            // FIXME no better way to not return the address of a temporary?
             // typedef typename const_subiterator1_type::reference reference;
             typedef typename const_subiterator1_type::value_type reference;
             typedef typename const_subiterator1_type::pointer pointer;
@@ -1909,7 +1909,7 @@ namespace boost { namespace numeric { namespace ublas {
                                                       dense_random_access_iterator_tag>::iterator_category iterator_category;
             typedef typename const_subiterator2_type::value_type value_type;
             typedef typename const_subiterator2_type::difference_type difference_type;
-            // FIXME: no better way to not return the address of a temporary?
+            // FIXME no better way to not return the address of a temporary?
             // typedef typename const_subiterator2_type::reference reference;
             typedef typename const_subiterator2_type::value_type reference;
             typedef typename const_subiterator2_type::pointer pointer;
