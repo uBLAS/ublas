@@ -36,11 +36,12 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::value_type value_type;
         typedef const value_type &const_reference;
         typedef value_type *pointer;
+        typedef const value_type *const_pointer;
 
     private:
         // Proxied element operations
         void get_d () const {
-            pointer p = (*this) ().find_element (i_, j_);
+            const_pointer p = (*this) ().find_element (i_, j_);
             if (p)
                 d_ = *p;
             else
