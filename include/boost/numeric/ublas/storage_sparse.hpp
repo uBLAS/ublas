@@ -516,16 +516,6 @@ namespace boost { namespace numeric { namespace ublas {
         }
     }
 
-/* FIXME REMOVE
-    // This specialization is missing in Dinkumware's STL?!
-    template<class I, class T, class F, class ALLOC>
-    BOOST_UBLAS_INLINE
-    void swap (std::map<I, T, F, ALLOC> &a1, std::map<I, T, F, ALLOC> &a2) {
-        if (&a1 != &a2)
-            a1.swap (a2);
-    }
-*/
-
 }}}
 
 #endif
