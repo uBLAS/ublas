@@ -38,7 +38,9 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::size_type size_type;
         typedef typename M::value_type value_type;
 
+        // ISSUE why is there a dense vector here?
         vector<value_type> temporary (e2 ().size2 ());
+        temporary.clear ();
 #if BOOST_UBLAS_TYPE_CHECK
         matrix<value_type, row_major> cm (m.size1 (), m.size2 ());
         typedef typename type_traits<value_type>::real_type real_type;
@@ -104,7 +106,9 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::size_type size_type;
         typedef typename M::value_type value_type;
 
+        // ISSUE why is there a dense vector here?
         vector<value_type> temporary (e1 ().size1 ());
+        temporary.clear ();
 #if BOOST_UBLAS_TYPE_CHECK
         matrix<value_type, column_major> cm (m.size1 (), m.size2 ());
         typedef typename type_traits<value_type>::real_type real_type;
