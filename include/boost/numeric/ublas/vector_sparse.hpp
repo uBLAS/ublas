@@ -760,24 +760,30 @@ namespace boost { namespace numeric { namespace ublas {
         compressed_vector ():
             vector_expression<self_type> (),
             size_ (0), capacity_ (restrict_capacity (0)), filled_ (0),
-            index_data_ (capacity_), value_data_ (capacity_) {}
+            index_data_ (capacity_), value_data_ (capacity_) {
+            storage_invariants ();
+        }
         explicit BOOST_UBLAS_INLINE
         compressed_vector (size_type size, size_type non_zeros = 0):
             vector_expression<self_type> (),
             size_ (size), capacity_ (restrict_capacity (non_zeros)), filled_ (0),
             index_data_ (capacity_), value_data_ (capacity_) {
+        storage_invariants ();
         }
         BOOST_UBLAS_INLINE
         compressed_vector (const compressed_vector &v):
             vector_expression<self_type> (),
             size_ (v.size_), capacity_ (v.capacity_), filled_ (v.filled_),
-            index_data_ (v.index_data_), value_data_ (v.value_data_) {}
+            index_data_ (v.index_data_), value_data_ (v.value_data_) {
+            storage_invariants ();
+        }
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_vector (const vector_expression<AE> &ae, size_type non_zeros = 0):
             vector_expression<self_type> (),
             size_ (ae ().size ()), capacity_ (restrict_capacity (non_zeros)), filled_ (0),
             index_data_ (capacity_), value_data_ (capacity_) {
+            storage_invariants ();
             vector_assign<scalar_assign> (*this, ae);
         }
 
