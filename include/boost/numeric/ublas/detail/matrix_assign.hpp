@@ -449,73 +449,57 @@ namespace boost { namespace numeric { namespace ublas {
         matrix_assign_scalar<F> (m, t, storage_category (), orientation_category ());
     }
 
-    template<class SC, class A, class RI1, class RI2>
+    template<class SC, bool COMPUTED, class RI1, class RI2>
     struct matrix_assign_traits {
         typedef SC storage_category;
     };
 
-    template<>
-    struct matrix_assign_traits<dense_tag, assign_tag, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
+    template<bool COMPUTED>
+    struct matrix_assign_traits<dense_tag, COMPUTED, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
         typedef packed_tag storage_category;
     };
     template<>
-    struct matrix_assign_traits<dense_tag, computed_assign_tag, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
-        typedef packed_tag storage_category;
-    };
-    template<>
-    struct matrix_assign_traits<dense_tag, assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+    struct matrix_assign_traits<dense_tag, false, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
         typedef sparse_tag storage_category;
     };
     template<>
-    struct matrix_assign_traits<dense_tag, computed_assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+    struct matrix_assign_traits<dense_tag, true, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+        typedef sparse_proxy_tag storage_category;
+    };
+
+    template<bool COMPUTED>
+    struct matrix_assign_traits<dense_proxy_tag, COMPUTED, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
+        typedef packed_proxy_tag storage_category;
+    };
+    template<bool COMPUTED>
+    struct matrix_assign_traits<dense_proxy_tag, COMPUTED, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
 
     template<>
-    struct matrix_assign_traits<dense_proxy_tag, assign_tag, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
-        typedef packed_proxy_tag storage_category;
-    };
-    template<>
-    struct matrix_assign_traits<dense_proxy_tag, computed_assign_tag, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
-        typedef packed_proxy_tag storage_category;
-    };
-    template<>
-    struct matrix_assign_traits<dense_proxy_tag, assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-    template<>
-    struct matrix_assign_traits<dense_proxy_tag, computed_assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-
-    template<>
-    struct matrix_assign_traits<packed_tag, assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+    struct matrix_assign_traits<packed_tag, false, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
         typedef sparse_tag storage_category;
     };
     template<>
-    struct matrix_assign_traits<packed_tag, computed_assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+    struct matrix_assign_traits<packed_tag, true, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+        typedef sparse_proxy_tag storage_category;
+    };
+
+    template<bool COMPUTED>
+    struct matrix_assign_traits<packed_proxy_tag, COMPUTED, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
 
     template<>
-    struct matrix_assign_traits<packed_proxy_tag, assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+    struct matrix_assign_traits<sparse_tag, true, dense_random_access_iterator_tag, dense_random_access_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
     template<>
-    struct matrix_assign_traits<packed_proxy_tag, computed_assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-
-    template<>
-    struct matrix_assign_traits<sparse_tag, computed_assign_tag, dense_random_access_iterator_tag, dense_random_access_iterator_tag> {
+    struct matrix_assign_traits<sparse_tag, true, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
     template<>
-    struct matrix_assign_traits<sparse_tag, computed_assign_tag, packed_random_access_iterator_tag, packed_random_access_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-    template<>
-    struct matrix_assign_traits<sparse_tag, computed_assign_tag, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
+    struct matrix_assign_traits<sparse_tag, true, sparse_bidirectional_iterator_tag, sparse_bidirectional_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
 
@@ -680,8 +664,8 @@ namespace boost { namespace numeric { namespace ublas {
             size1 = (std::min) (- diff1, it1_size);
             if (size1 > 0) {
                 it1_size -= size1;
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                    while (-- size1 >= 0) {
+                if (!functor_type::computed) {
+                    while (-- size1 >= 0) { // zeroing
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                         typename M::iterator2 it2 (it1.begin ());
                         typename M::iterator2 it2_end (it1.end ());
@@ -729,8 +713,8 @@ namespace boost { namespace numeric { namespace ublas {
                 size2 = (std::min) (- diff2, it2_size);
                 if (size2 > 0) {
                     it2_size -= size2;
-                    if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                        while (-- size2 >= 0)
+                    if (!functor_type::computed) {
+                        while (-- size2 >= 0)   // zeroing
                             functor_type::apply (*it2, value_type (0)), ++ it2;
                     } else {
                         it2 += size2;
@@ -744,8 +728,8 @@ namespace boost { namespace numeric { namespace ublas {
             while (-- size2 >= 0)
                 functor_type::apply (*it2, *it2e), ++ it2, ++ it2e;
             size2 = it2_size;
-            if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                while (-- size2 >= 0)
+            if (!functor_type::computed) {
+                while (-- size2 >= 0)   // zeroing
                     functor_type::apply (*it2, value_type (0)), ++ it2;
             } else {
                 it2 += size2;
@@ -753,8 +737,8 @@ namespace boost { namespace numeric { namespace ublas {
             ++ it1, ++ it1e;
         }
         size1 = it1_size;
-        if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-            while (-- size1 >= 0) {
+        if (!functor_type::computed) {
+            while (-- size1 >= 0) { // zeroing
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                 typename M::iterator2 it2 (it1.begin ());
                 typename M::iterator2 it2_end (it1.end ());
@@ -814,8 +798,8 @@ namespace boost { namespace numeric { namespace ublas {
             size2 = (std::min) (- diff2, it2_size);
             if (size2 > 0) {
                 it2_size -= size2;
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                    while (-- size2 >= 0) {
+                if (!functor_type::computed) {
+                    while (-- size2 >= 0) { // zeroing
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                         typename M::iterator1 it1 (it2.begin ());
                         typename M::iterator1 it1_end (it2.end ());
@@ -863,8 +847,8 @@ namespace boost { namespace numeric { namespace ublas {
                 size1 = (std::min) (- diff1, it1_size);
                 if (size1 > 0) {
                     it1_size -= size1;
-                    if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                        while (-- size1 >= 0)
+                    if (!functor_type::computed) {
+                        while (-- size1 >= 0)   // zeroing
                             functor_type::apply (*it1, value_type (0)), ++ it1;
                     } else {
                         it1 += size1;
@@ -878,8 +862,8 @@ namespace boost { namespace numeric { namespace ublas {
             while (-- size1 >= 0)
                 functor_type::apply (*it1, *it1e), ++ it1, ++ it1e;
             size1 = it1_size;
-            if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                while (-- size1 >= 0)
+            if (!functor_type::computed) {
+                while (-- size1 >= 0)   // zeroing
                     functor_type::apply (*it1, value_type (0)), ++ it1;
             } else {
                 it1 += size1;
@@ -887,8 +871,8 @@ namespace boost { namespace numeric { namespace ublas {
             ++ it2, ++ it2e;
         }
         size2 = it2_size;
-        if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-            while (-- size2 >= 0) {
+        if (!functor_type::computed) {
+            while (-- size2 >= 0) { // zeroing
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                 typename M::iterator1 it1 (it2.begin ());
                 typename M::iterator1 it1_end (it2.end ());
@@ -915,7 +899,7 @@ namespace boost { namespace numeric { namespace ublas {
     void matrix_assign (M &m, const matrix_expression<E> &e, sparse_tag, row_major_tag) {
         typedef F<typename M::reference, typename E::value_type> functor_type;
         // R unnecessary, make_conformant not required
-        BOOST_STATIC_ASSERT ((boost::is_same<typename functor_type::assign_category, assign_tag>::value));
+        BOOST_STATIC_ASSERT ((!functor_type::computed));
         BOOST_UBLAS_CHECK (m.size1 () == e ().size1 (), bad_size ());
         BOOST_UBLAS_CHECK (m.size2 () == e ().size2 (), bad_size ());
         typedef typename M::value_type value_type;
@@ -935,7 +919,7 @@ namespace boost { namespace numeric { namespace ublas {
             while (it2e != it2e_end) {
                 value_type t (*it2e);
                 if (t != value_type (0))
-                    m.set_element (it2e.index1 (), it2e.index2 (), t);
+                    m.insert_element (it2e.index1 (), it2e.index2 (), t);
                 ++ it2e;
             }
             ++ it1e;
@@ -947,7 +931,7 @@ namespace boost { namespace numeric { namespace ublas {
     void matrix_assign (M &m, const matrix_expression<E> &e, sparse_tag, column_major_tag) {
         typedef F<typename M::reference, typename E::value_type> functor_type;
         // R unnecessary, make_conformant not required
-        BOOST_STATIC_ASSERT ((boost::is_same<typename functor_type::assign_category, assign_tag>::value));
+        BOOST_STATIC_ASSERT ((!functor_type::computed));
         BOOST_UBLAS_CHECK (m.size1 () == e ().size1 (), bad_size ());
         BOOST_UBLAS_CHECK (m.size2 () == e ().size2 (), bad_size ());
         typedef typename M::value_type value_type;
@@ -967,13 +951,13 @@ namespace boost { namespace numeric { namespace ublas {
             while (it1e != it1e_end) {
                 value_type t (*it1e);
                 if (t != value_type (0))
-                    m.set_element (it1e.index1 (), it1e.index2 (), t);
+                    m.insert_element (it1e.index1 (), it1e.index2 (), t);
                 ++ it1e;
             }
             ++ it2e;
         }
     }
-    // Sparse proxy row major case
+    // Sparse proxy or functional row major case
     template<template <class T1, class T2> class F, class R, class M, class E>
     // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.
     void matrix_assign (M &m, const matrix_expression<E> &e, sparse_proxy_tag, row_major_tag) {
@@ -1027,7 +1011,7 @@ namespace boost { namespace numeric { namespace ublas {
                             } else
                                 break;
                         } else if (compare < 0) {
-                            if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
+                            if (!functor_type::computed) {
                                 functor_type::apply (*it2, value_type (0));
                                 ++ it2;
                             } else
@@ -1045,8 +1029,8 @@ namespace boost { namespace numeric { namespace ublas {
                         }
                     }
                 }
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                    while (it2 != it2_end) {
+                if (!functor_type::computed) {
+                    while (it2 != it2_end) {    // zeroing
                         functor_type::apply (*it2, value_type (0));
                         ++ it2;
                     }
@@ -1055,7 +1039,7 @@ namespace boost { namespace numeric { namespace ublas {
                 }
                 ++ it1, ++ it1e;
             } else if (compare < 0) {
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
+                if (!functor_type::computed) {
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                     typename M::iterator2 it2 (it1.begin ());
                     typename M::iterator2 it2_end (it1.end ());
@@ -1063,7 +1047,7 @@ namespace boost { namespace numeric { namespace ublas {
                     typename M::iterator2 it2 (begin (it1, iterator1_tag ()));
                     typename M::iterator2 it2_end (end (it1, iterator1_tag ()));
 #endif
-                    while (it2 != it2_end) {
+                    while (it2 != it2_end) {    // zeroing
                         functor_type::apply (*it2, value_type (0));
                         ++ it2;
                     }
@@ -1075,7 +1059,7 @@ namespace boost { namespace numeric { namespace ublas {
                 increment (it1e, it1e_end, compare);
             }
         }
-        if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
+        if (!functor_type::computed) {
             while (it1 != it1_end) {
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                 typename M::iterator2 it2 (it1.begin ());
@@ -1084,7 +1068,7 @@ namespace boost { namespace numeric { namespace ublas {
                 typename M::iterator2 it2 (begin (it1, iterator1_tag ()));
                 typename M::iterator2 it2_end (end (it1, iterator1_tag ()));
 #endif
-                while (it2 != it2_end) {
+                while (it2 != it2_end) {    // zeroing
                     functor_type::apply (*it2, value_type (0));
                     ++ it2;
                 }
@@ -1098,7 +1082,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (equals (m, cm), external_logic ());
 #endif
     }
-    // Sparse proxy column major case
+    // Sparse proxy or functional column major case
     template<template <class T1, class T2> class F, class R, class M, class E>
     // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.
     void matrix_assign (M &m, const matrix_expression<E> &e, sparse_proxy_tag, column_major_tag) {
@@ -1152,8 +1136,8 @@ namespace boost { namespace numeric { namespace ublas {
                             } else
                                 break;
                         } else if (compare < 0) {
-                            if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                                functor_type::apply (*it1, value_type (0));
+                            if (!functor_type::computed) {
+                                functor_type::apply (*it1, value_type (0)); // zeroing
                                 ++ it1;
                             } else
                                 increment (it1, it1_end, - compare);
@@ -1170,8 +1154,8 @@ namespace boost { namespace numeric { namespace ublas {
                         }
                     }
                 }
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                    while (it1 != it1_end) {
+                if (!functor_type::computed) {
+                    while (it1 != it1_end) {    // zeroing
                         functor_type::apply (*it1, value_type (0));
                         ++ it1;
                     }
@@ -1180,7 +1164,7 @@ namespace boost { namespace numeric { namespace ublas {
                 }
                 ++ it2, ++ it2e;
             } else if (compare < 0) {
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
+                if (!functor_type::computed) {
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                     typename M::iterator1 it1 (it2.begin ());
                     typename M::iterator1 it1_end (it2.end ());
@@ -1188,7 +1172,7 @@ namespace boost { namespace numeric { namespace ublas {
                     typename M::iterator1 it1 (begin (it2, iterator2_tag ()));
                     typename M::iterator1 it1_end (end (it2, iterator2_tag ()));
 #endif
-                    while (it1 != it1_end) {
+                    while (it1 != it1_end) {    // zeroing
                         functor_type::apply (*it1, value_type (0));
                         ++ it1;
                     }
@@ -1200,7 +1184,7 @@ namespace boost { namespace numeric { namespace ublas {
                 increment (it2e, it2e_end, compare);
             }
         }
-        if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
+        if (!functor_type::computed) {
             while (it2 != it2_end) {
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
                 typename M::iterator1 it1 (it2.begin ());
@@ -1209,7 +1193,7 @@ namespace boost { namespace numeric { namespace ublas {
                 typename M::iterator1 it1 (begin (it2, iterator2_tag ()));
                 typename M::iterator1 it1_end (end (it2, iterator2_tag ()));
 #endif
-                while (it1 != it1_end) {
+                while (it1 != it1_end) {    // zeroing
                     functor_type::apply (*it1, value_type (0));
                     ++ it1;
                 }
@@ -1228,9 +1212,8 @@ namespace boost { namespace numeric { namespace ublas {
     template<template <class T1, class T2> class F, class M, class E>
     BOOST_UBLAS_INLINE
     void matrix_assign (M &m, const matrix_expression<E> &e) {
-        typedef typename F<typename M::reference, typename E::value_type>::assign_category assign_category;
         typedef typename matrix_assign_traits<typename M::storage_category,
-                                              assign_category,
+                                              F<typename M::reference, typename E::value_type>::computed,
                                               typename E::const_iterator1::iterator_category,
                                               typename E::const_iterator2::iterator_category>::storage_category storage_category;
         // give preference to matrix M's orientation if known
@@ -1243,10 +1226,9 @@ namespace boost { namespace numeric { namespace ublas {
     template<template <class T1, class T2> class F, class R, class M, class E>
     BOOST_UBLAS_INLINE
     void matrix_assign (M &m, const matrix_expression<E> &e) {
-        typedef typename F<typename M::reference, typename E::value_type>::assign_category assign_category;
         typedef R conformant_restrict_type;
         typedef typename matrix_assign_traits<typename M::storage_category,
-                                              assign_category,
+                                              F<typename M::reference, typename E::value_type>::computed,
                                               typename E::const_iterator1::iterator_category,
                                               typename E::const_iterator2::iterator_category>::storage_category storage_category;
         // give preference to matrix M's orientation if known

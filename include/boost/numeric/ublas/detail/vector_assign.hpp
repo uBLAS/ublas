@@ -174,73 +174,61 @@ namespace boost { namespace numeric { namespace ublas {
         vector_assign_scalar<F> (v, t, storage_category ());
     }
 
-    template<class SC, class A, class RI>
+    template<class SC, bool COMPUTED, class RI>
     struct vector_assign_traits {
         typedef SC storage_category;
     };
 
-    template<>
-    struct vector_assign_traits<dense_tag, assign_tag, packed_random_access_iterator_tag> {
+    template<bool COMPUTED>
+    struct vector_assign_traits<dense_tag, COMPUTED, packed_random_access_iterator_tag> {
         typedef packed_tag storage_category;
     };
     template<>
-    struct vector_assign_traits<dense_tag, computed_assign_tag, packed_random_access_iterator_tag> {
-        typedef packed_tag storage_category;
-    };
-    template<>
-    struct vector_assign_traits<dense_tag, assign_tag, sparse_bidirectional_iterator_tag> {
+    struct vector_assign_traits<dense_tag, false, sparse_bidirectional_iterator_tag> {
         typedef sparse_tag storage_category;
     };
     template<>
-    struct vector_assign_traits<dense_tag, computed_assign_tag, sparse_bidirectional_iterator_tag> {
+    struct vector_assign_traits<dense_tag, true, sparse_bidirectional_iterator_tag> {
+        typedef sparse_proxy_tag storage_category;
+    };
+
+    template<bool COMPUTED>
+    struct vector_assign_traits<dense_proxy_tag, COMPUTED, packed_random_access_iterator_tag> {
+        typedef packed_proxy_tag storage_category;
+    };
+    template<>
+    struct vector_assign_traits<dense_proxy_tag, false, sparse_bidirectional_iterator_tag> {
+        typedef sparse_proxy_tag storage_category;
+    };
+    template<>
+    struct vector_assign_traits<dense_proxy_tag, true, sparse_bidirectional_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
 
     template<>
-    struct vector_assign_traits<dense_proxy_tag, assign_tag, packed_random_access_iterator_tag> {
-        typedef packed_proxy_tag storage_category;
-    };
-    template<>
-    struct vector_assign_traits<dense_proxy_tag, computed_assign_tag, packed_random_access_iterator_tag> {
-        typedef packed_proxy_tag storage_category;
-    };
-    template<>
-    struct vector_assign_traits<dense_proxy_tag, assign_tag, sparse_bidirectional_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-    template<>
-    struct vector_assign_traits<dense_proxy_tag, computed_assign_tag, sparse_bidirectional_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-
-    template<>
-    struct vector_assign_traits<packed_tag, assign_tag, sparse_bidirectional_iterator_tag> {
+    struct vector_assign_traits<packed_tag, false, sparse_bidirectional_iterator_tag> {
         typedef sparse_tag storage_category;
     };
     template<>
-    struct vector_assign_traits<packed_tag, computed_assign_tag, sparse_bidirectional_iterator_tag> {
+    struct vector_assign_traits<packed_tag, true, sparse_bidirectional_iterator_tag> {
+        typedef sparse_proxy_tag storage_category;
+    };
+
+    template<bool COMPUTED>
+    struct vector_assign_traits<packed_proxy_tag, COMPUTED, sparse_bidirectional_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
 
     template<>
-    struct vector_assign_traits<packed_proxy_tag, assign_tag, sparse_bidirectional_iterator_tag> {
+    struct vector_assign_traits<sparse_tag, true, dense_random_access_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
     template<>
-    struct vector_assign_traits<packed_proxy_tag, computed_assign_tag, sparse_bidirectional_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-
-    template<>
-    struct vector_assign_traits<sparse_tag, computed_assign_tag, dense_random_access_iterator_tag> {
+    struct vector_assign_traits<sparse_tag, true, packed_random_access_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
     template<>
-    struct vector_assign_traits<sparse_tag, computed_assign_tag, packed_random_access_iterator_tag> {
-        typedef sparse_proxy_tag storage_category;
-    };
-    template<>
-    struct vector_assign_traits<sparse_tag, computed_assign_tag, sparse_bidirectional_iterator_tag> {
+    struct vector_assign_traits<sparse_tag, true, sparse_bidirectional_iterator_tag> {
         typedef sparse_proxy_tag storage_category;
     };
 
@@ -330,8 +318,8 @@ namespace boost { namespace numeric { namespace ublas {
             difference_type size ((std::min) (difference_type (ite.index () - it.index ()), it_size));
             if (size > 0) {
                 it_size -= size;
-                if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-                    while (-- size >= 0)
+                if (!functor_type::computed) {
+                    while (-- size >= 0)    // zeroing
                         functor_type::apply (*it, value_type (0)), ++ it;
                 } else {
                     it += size;
@@ -344,8 +332,8 @@ namespace boost { namespace numeric { namespace ublas {
         while (-- size >= 0)
             functor_type::apply (*it, *ite), ++ it, ++ ite;
         size = it_size;
-        if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-            while (-- size >= 0)
+        if (!functor_type::computed) {
+            while (-- size >= 0)    // zeroing
                 functor_type::apply (*it, value_type (0)), ++ it;
         } else {
             it += size;
@@ -361,6 +349,7 @@ namespace boost { namespace numeric { namespace ublas {
     void vector_assign (V &v, const vector_expression<E> &e, sparse_tag) {
         BOOST_UBLAS_CHECK (v.size () == e ().size (), bad_size ());
         typedef F<typename V::iterator::reference, typename E::value_type> functor_type;
+        BOOST_STATIC_ASSERT ((!functor_type::computed));
         typedef typename V::value_type value_type;
 #if BOOST_UBLAS_TYPE_CHECK
         vector<value_type> cv (v.size ());
@@ -378,7 +367,7 @@ namespace boost { namespace numeric { namespace ublas {
         while (ite != ite_end) {
             value_type t (*ite);
             if (t != value_type (0))
-                v.set_element (ite.index (), t);
+                v.insert_element (ite.index (), t);
             ++ ite;
         }
 #if BOOST_UBLAS_TYPE_CHECK
@@ -386,7 +375,7 @@ namespace boost { namespace numeric { namespace ublas {
             BOOST_UBLAS_CHECK (equals (v, cv), external_logic ());
 #endif
     }
-    // Sparse proxy case
+    // Sparse proxy or functional case
     template<template <class T1, class T2> class F, class V, class E>
     // BOOST_UBLAS_INLINE This function seems to be big. So we do not let the compiler inline it.
     void vector_assign (V &v, const vector_expression<E> &e, sparse_proxy_tag) {
@@ -425,7 +414,7 @@ namespace boost { namespace numeric { namespace ublas {
                     } else
                         break;
                 } else if (compare < 0) {
-                    if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
+                    if (!functor_type::computed) {
                         functor_type::apply (*it, value_type (0));
                         ++ it;
                     } else
@@ -444,8 +433,8 @@ namespace boost { namespace numeric { namespace ublas {
             }
         }
 
-        if (boost::is_same<typename functor_type::assign_category, assign_tag>::value) {
-            while (it != it_end) {
+        if (!functor_type::computed) {
+            while (it != it_end) {  // zeroing
                 functor_type::apply (*it, value_type (0));
                 ++ it;
             }
@@ -462,9 +451,8 @@ namespace boost { namespace numeric { namespace ublas {
     template<template <class T1, class T2> class F, class V, class E>
     BOOST_UBLAS_INLINE
     void vector_assign (V &v, const vector_expression<E> &e) {
-        typedef typename F<typename V::reference, typename E::value_type>::assign_category assign_category;
         typedef typename vector_assign_traits<typename V::storage_category,
-                                              assign_category,
+                                              F<typename V::reference, typename E::value_type>::computed,
                                               typename E::const_iterator::iterator_category>::storage_category storage_category;
         vector_assign<F> (v, e, storage_category ());
     }
