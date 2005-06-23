@@ -461,11 +461,19 @@ namespace boost { namespace numeric { namespace ublas {
             vector_assign<scalar_assign> (*this, ae);
             return *this;
         }
+
+        // Computed assignment
         template<class AE>
         BOOST_UBLAS_INLINE
         mapped_vector &operator += (const vector_expression<AE> &ae) {
             self_type temporary (*this + ae, detail::map_capacity (data()));
             return assign_temporary (temporary);
+        }
+        template<class A2>          // addative assignment without temporary
+        BOOST_UBLAS_INLINE
+        mapped_vector &operator += (const mapped_vector<T, A2> &v) {
+            plus_assign (v);
+            return *this;
         }
         template<class AE>
         BOOST_UBLAS_INLINE
@@ -478,6 +486,12 @@ namespace boost { namespace numeric { namespace ublas {
         mapped_vector &operator -= (const vector_expression<AE> &ae) {
             self_type temporary (*this - ae, detail::map_capacity (data()));
             return assign_temporary (temporary);
+        }
+        template<class A2>          // addative assignment without temporary
+        BOOST_UBLAS_INLINE
+        mapped_vector &operator -= (const mapped_vector<T, A2> &v) {
+            minus_assign (v);
+            return *this;
         }
         template<class AE>
         BOOST_UBLAS_INLINE
@@ -990,11 +1004,19 @@ namespace boost { namespace numeric { namespace ublas {
             vector_assign<scalar_assign> (*this, ae);
             return *this;
         }
+
+        // Computed assignment
         template<class AE>
         BOOST_UBLAS_INLINE
         compressed_vector &operator += (const vector_expression<AE> &ae) {
             self_type temporary (*this + ae, capacity_);
             return assign_temporary (temporary);
+        }
+        template<class T, std::size_t IB, class IA, class TA>          // addative assignment without temporary
+        BOOST_UBLAS_INLINE
+        compressed_vector &operator += (const compressed_vector<T, IB, IA, TA> &v) {
+            plus_assign (v);
+            return *this;
         }
         template<class AE>
         BOOST_UBLAS_INLINE
@@ -1007,6 +1029,12 @@ namespace boost { namespace numeric { namespace ublas {
         compressed_vector &operator -= (const vector_expression<AE> &ae) {
             self_type temporary (*this - ae, capacity_);
             return assign_temporary (temporary);
+        }
+        template<class T, std::size_t IB, class IA, class TA>          // addative assignment without temporary
+        BOOST_UBLAS_INLINE
+        compressed_vector &operator -= (const compressed_vector<T, IB, IA, TA> &v) {
+            minus_assign (v);
+            return *this;
         }
         template<class AE>
         BOOST_UBLAS_INLINE
@@ -1587,11 +1615,19 @@ namespace boost { namespace numeric { namespace ublas {
             vector_assign<scalar_assign> (*this, ae);
             return *this;
         }
+
+        // Computed assignment
         template<class AE>
         BOOST_UBLAS_INLINE
         coordinate_vector &operator += (const vector_expression<AE> &ae) {
             self_type temporary (*this + ae, capacity_);
             return assign_temporary (temporary);
+        }
+        template<class T, std::size_t IB, class IA, class TA>          // addative assignment without temporary
+        BOOST_UBLAS_INLINE
+        coordinate_vector &operator += (const coordinate_vector<T, IB, IA, TA> &v) {
+            plus_assign (v);
+            return *this;
         }
         template<class AE>
         BOOST_UBLAS_INLINE
@@ -1604,6 +1640,12 @@ namespace boost { namespace numeric { namespace ublas {
         coordinate_vector &operator -= (const vector_expression<AE> &ae) {
             self_type temporary (*this - ae, capacity_);
             return assign_temporary (temporary);
+        }
+        template<class T, std::size_t IB, class IA, class TA>          // addative assignment without temporary
+        BOOST_UBLAS_INLINE
+        coordinate_vector &operator -= (const coordinate_vector<T, IB, IA, TA> &v) {
+            minus_assign (v);
+            return *this;
         }
         template<class AE>
         BOOST_UBLAS_INLINE
