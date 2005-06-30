@@ -34,7 +34,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef const T *const_pointer;
         typedef vector<T, A> self_type;
     public:
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
         using vector_expression<self_type>::operator ();
 #endif
         typedef typename A::size_type size_type;
@@ -551,7 +551,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef const T *const_pointer;
         typedef zero_vector<T> self_type;
     public:
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
         using vector_expression<self_type>::operator ();
 #endif
         typedef std::size_t size_type;
@@ -740,7 +740,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef const T *const_pointer;
         typedef unit_vector<T> self_type;
     public:
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
         using vector_expression<self_type>::operator ();
 #endif
         typedef std::size_t size_type;
@@ -954,7 +954,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef const T *const_pointer;
         typedef scalar_vector<T> self_type;
     public:
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
         using vector_expression<self_type>::operator ();
 #endif
         typedef std::size_t size_type;
@@ -1174,7 +1174,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         typedef c_vector<T, N> self_type;
     public:
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
         using vector_expression<self_type>::operator ();
 #endif
         typedef std::size_t size_type;
@@ -1320,9 +1320,9 @@ namespace boost { namespace numeric { namespace ublas {
             self_type temporary (*this + ae);
             return assign_temporary (temporary);
         }
-        template<std::size_t  N>          // addative assignment without temporary
+        template<std::size_t N2>          // addative assignment without temporary
         BOOST_UBLAS_INLINE
-        c_vector &operator += (const c_vector<T, N> &v) {
+        c_vector &operator += (const c_vector<T, N2> &v) {
             plus_assign (v);
             return *this;
         }
@@ -1338,9 +1338,9 @@ namespace boost { namespace numeric { namespace ublas {
             self_type temporary (*this - ae);
             return assign_temporary (temporary);
         }
-        template<std::size_t  N>          // addative assignment without temporary
+        template<std::size_t N2>          // addative assignment without temporary
         BOOST_UBLAS_INLINE
-        c_vector &operator -= (const c_vector<T, N> &v) {
+        c_vector &operator -= (const c_vector<T, N2> &v) {
             minus_assign (v);
             return *this;
         }
