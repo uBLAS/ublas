@@ -518,14 +518,14 @@ namespace boost { namespace numeric { namespace ublas {
         }
     };
 
-    template<class S>
+    template<class SE>
     struct ScalarExpressionConcept {
-        typedef S scalar_type;
-        typedef typename S::value_type value_type;
+        typedef SE scalar_expression_type;
+        typedef typename SE::value_type value_type;
 
         static void constraints () {
-            DefaultConstructibleConcept<scalar_type>::constraints ();
-            scalar_type s = scalar_type ();
+        	scalar_expression_type *sp;
+            scalar_expression_type s = *sp;
             value_type t;
             // Conversion
             t = s;
