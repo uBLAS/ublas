@@ -37,7 +37,6 @@ namespace boost { namespace numeric { namespace ublas {
 #endif
         typedef const V const_vector_type;
         typedef V vector_type;
-        typedef typename V::simd_category simd_category;
         typedef typename V::size_type size_type;
         typedef typename V::difference_type difference_type;
         typedef typename V::value_type value_type;
@@ -55,9 +54,6 @@ namespace boost { namespace numeric { namespace ublas {
                                                  dense_proxy_tag>::storage_category storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        vector_range ():
-            data_ (nil_), r_ () {}
         BOOST_UBLAS_INLINE
         vector_range (vector_type &data, const range_type &r):
             data_ (data), r_ (r.preprocess (data.size ())) {
@@ -472,11 +468,7 @@ namespace boost { namespace numeric { namespace ublas {
     private:
         vector_closure_type data_;
         range_type r_;
-        static vector_type nil_;
     };
-
-    template<class V>
-    typename vector_range<V>::vector_type vector_range<V>::nil_;
 
     // Projections
     template<class V>
@@ -519,7 +511,6 @@ namespace boost { namespace numeric { namespace ublas {
 #endif
         typedef const V const_vector_type;
         typedef V vector_type;
-        typedef typename V::simd_category simd_category;
         typedef typename V::size_type size_type;
         typedef typename V::difference_type difference_type;
         typedef typename V::value_type value_type;
@@ -538,9 +529,6 @@ namespace boost { namespace numeric { namespace ublas {
                                                  dense_proxy_tag>::storage_category storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        vector_slice ():
-            data_ (nil_), s_ () {}
         BOOST_UBLAS_INLINE
         vector_slice (vector_type &data, const slice_type &s):
             data_ (data), s_ (s.preprocess (data.size ())) {
@@ -962,12 +950,8 @@ namespace boost { namespace numeric { namespace ublas {
     private:
         vector_closure_type data_;
         slice_type s_;
-        static vector_type nil_;
     };
 
-    template<class V>
-    typename vector_slice<V>::vector_type vector_slice<V>::nil_;
-    
     // Projections
     template<class V>
     BOOST_UBLAS_INLINE
@@ -1043,9 +1027,6 @@ namespace boost { namespace numeric { namespace ublas {
                                                  dense_proxy_tag>::storage_category storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        vector_indirect ():
-            data_ (nil_), ia_ () {}
         BOOST_UBLAS_INLINE
         vector_indirect (vector_type &data, size_type size):
             data_ (data), ia_ (size) {}
@@ -1467,11 +1448,7 @@ return true;
     private:
         vector_closure_type data_;
         indirect_array_type ia_;
-        static vector_type nil_;
     };
-
-    template<class V, class IA>
-    typename vector_indirect<V, IA>::vector_type vector_indirect<V, IA>::nil_;
 
     // Projections
     template<class V, class A>

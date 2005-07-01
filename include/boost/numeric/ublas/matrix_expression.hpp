@@ -19,180 +19,13 @@
 
 #include <boost/numeric/ublas/vector_expression.hpp>
 
+
 // Expression templates based on ideas of Todd Veldhuizen and Geoffrey Furnish
 // Iterators based on ideas of Jeremy Siek
+//
+// Classes that model the Matrix Expression concept
 
 namespace boost { namespace numeric { namespace ublas {
-
-    // Base class Matrix Expressions - see the Barton Nackman trick
-    // This class could define an common interface for all
-    // statically derived expression type classes.
-    // We implement the casts to the statically derived type.
-
-    template<class E>
-    class matrix_expression:
-        public ublas_expression<E> {
-    public:
-        static const unsigned complexity = 0;
-        typedef E expression_type;
-        typedef matrix_tag type_category;
-        typedef abstract_tag simd_category;
-        // FIXME Template instantiation order problem
-        // typedef typename E::size_type size_type;
-        typedef std::size_t size_type;
-        typedef noalias_proxy<E> noalias_proxy_type;
-        typedef const matrix_row<const E> const_matrix_row_type;
-        typedef matrix_row<E> matrix_row_type;
-        typedef const matrix_column<const E> const_matrix_column_type;
-        typedef matrix_column<E> matrix_column_type;
-        typedef const matrix_range<const E> const_matrix_range_type;
-        typedef matrix_range<E> matrix_range_type;
-        typedef const matrix_slice<const E> const_matrix_slice_type;
-        typedef matrix_slice<E> matrix_slice_type;
-        typedef const matrix_indirect<const E> const_matrix_indirect_type;
-        typedef matrix_indirect<E> matrix_indirect_type;
-
-        BOOST_UBLAS_INLINE
-        const expression_type &operator () () const {
-            return *static_cast<const expression_type *> (this);
-        }
-        BOOST_UBLAS_INLINE
-        expression_type &operator () () {
-            return *static_cast<expression_type *> (this);
-        }
-
-        BOOST_UBLAS_INLINE
-        noalias_proxy_type noalias () {
-            return noalias_proxy_type (operator () ());
-        }
-        BOOST_UBLAS_INLINE
-        const_matrix_row_type operator [] (size_type i) const {
-            return const_matrix_row_type (operator () (), i);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_row_type operator [] (size_type i) {
-            return matrix_row_type (operator () (), i);
-        }
-        BOOST_UBLAS_INLINE
-        const_matrix_row_type row (size_type i) const {
-            return const_matrix_row_type (operator () (), i);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_row_type row (size_type i) {
-            return matrix_row_type (operator () (), i);
-        }
-        BOOST_UBLAS_INLINE
-        const_matrix_column_type column (size_type j) const {
-            return const_matrix_column_type (operator () (), j);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_column_type column (size_type j) {
-            return matrix_column_type (operator () (), j);
-        }
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
-        BOOST_UBLAS_INLINE
-        const_matrix_range_type operator () (const range &r1, const range &r2) const {
-            return const_matrix_range_type (operator () (), r1, r2);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_range_type operator () (const range &r1, const range &r2) {
-            return matrix_range_type (operator () (), r1, r2);
-        }
-        BOOST_UBLAS_INLINE
-        const_matrix_slice_type operator () (const slice &s1, const slice &s2) const {
-            return const_matrix_slice_type (operator () (), s1, s2);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_slice_type operator () (const slice &s1, const slice &s2) {
-            return matrix_slice_type (operator () (), s1, s2);
-        }
-        template<class A>
-        BOOST_UBLAS_INLINE
-        const_matrix_indirect_type operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) const {
-            return const_matrix_indirect_type (operator () (), ia1, ia2);
-        }
-        template<class A>
-        BOOST_UBLAS_INLINE
-        matrix_indirect_type operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
-            return matrix_indirect_type (operator () (), ia1, ia2);
-        }
-#else
-        BOOST_UBLAS_INLINE
-        const_matrix_range_type project (const range &r1, const range &r2) const {
-            return const_matrix_range_type (operator () (), r1, r2);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_range_type project (const range &r1, const range &r2) {
-            return matrix_range_type (operator () (), r1, r2);
-        }
-        BOOST_UBLAS_INLINE
-        const_matrix_slice_type project (const slice &s1, const slice &s2) const {
-            return const_matrix_slice_type (operator () (), s1, s2);
-        }
-        BOOST_UBLAS_INLINE
-        matrix_slice_type project (const slice &s1, const slice &s2) {
-            return matrix_slice_type (operator () (), s1, s2);
-        }
-        template<class A>
-        BOOST_UBLAS_INLINE
-        const_matrix_indirect_type project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) const {
-            return const_matrix_indirect_type (operator () (), ia1, ia2);
-        }
-        template<class A>
-        BOOST_UBLAS_INLINE
-        matrix_indirect_type project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
-            return matrix_indirect_type (operator () (), ia1, ia2);
-        }
-#endif
-    };
-
-#ifdef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
-    struct iterator1_tag {};
-    struct iterator2_tag {};
-
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_iterator_type begin (const I &it, iterator1_tag) {
-        return it ().find2 (1, it.index1 (), 0);
-    }
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_iterator_type end (const I &it, iterator1_tag) {
-        return it ().find2 (1, it.index1 (), it ().size2 ());
-    }
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_reverse_iterator_type rbegin (const I &it, iterator1_tag) {
-        return typename I::dual_reverse_iterator_type (end (it, iterator1_tag ()));
-    }
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_reverse_iterator_type rend (const I &it, iterator1_tag) {
-        return typename I::dual_reverse_iterator_type (begin (it, iterator1_tag ()));
-    }
-
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_iterator_type begin (const I &it, iterator2_tag) {
-        return it ().find1 (1, 0, it.index2 ());
-    }
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_iterator_type end (const I &it, iterator2_tag) {
-        return it ().find1 (1, it ().size1 (), it.index2 ());
-    }
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_reverse_iterator_type rbegin (const I &it, iterator2_tag) {
-        return typename I::dual_reverse_iterator_type (end (it, iterator2_tag ()));
-    }
-    template<class I>
-    BOOST_UBLAS_INLINE
-    typename I::dual_reverse_iterator_type rend (const I &it, iterator2_tag) {
-        return typename I::dual_reverse_iterator_type (begin (it, iterator2_tag ()));
-    }
-#endif
-
 
     template<class E>
     class matrix_reference:
@@ -215,12 +48,8 @@ namespace boost { namespace numeric { namespace ublas {
         typedef const_closure_type closure_type;
         typedef typename E::orientation_category orientation_category;
         typedef typename E::storage_category storage_category;
-        typedef typename E::simd_category simd_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        matrix_reference ():
-              e_ (nil_) {}
         BOOST_UBLAS_INLINE
         explicit matrix_reference (refered_type &e):
               e_ (e) {}
@@ -442,11 +271,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     private:
         refered_type &e_;
-        static refered_type nil_;
     };
-
-    template<class E>
-    typename matrix_reference<E>::refered_type matrix_reference<E>::nil_;
 
     template<class E1, class E2, class F>
     class vector_matrix_binary:
@@ -475,9 +300,6 @@ namespace boost { namespace numeric { namespace ublas {
         typedef unknown_storage_tag storage_category;
 
         // Construction and destruction 
-        BOOST_UBLAS_INLINE
-        vector_matrix_binary ():
-            e1_ (), e2_ () {}
         BOOST_UBLAS_INLINE
         vector_matrix_binary (const expression1_type &e1, const expression2_type &e2): 
             e1_ (e1), e2_ (e2) {}
@@ -980,9 +802,6 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
-        matrix_unary1 ():
-            e_ () {}
-        BOOST_UBLAS_INLINE
         explicit matrix_unary1 (const expression_type &e):
             e_ (e) {}
 
@@ -1433,9 +1252,6 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
-        matrix_unary2 ():
-            e_ () {}
-        BOOST_UBLAS_INLINE
         // ISSUE may be used as mutable expression.
         // matrix_unary2 (const expression_type &e):
         explicit matrix_unary2 (expression_type &e):
@@ -1868,9 +1684,6 @@ namespace boost { namespace numeric { namespace ublas {
         typedef unknown_storage_tag storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        matrix_binary (): 
-            e1_ (), e2_ () {}
         BOOST_UBLAS_INLINE
         matrix_binary (const E1 &e1, const E2 &e2): 
             e1_ (e1), e2_ (e2) {}
@@ -2597,9 +2410,6 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
-        matrix_binary_scalar1 ():
-            e1_ (), e2_ () {}
-        BOOST_UBLAS_INLINE
         matrix_binary_scalar1 (const expression1_type &e1, const expression2_type &e2):
             e1_ (e1), e2_ (e2) {}
 
@@ -3024,9 +2834,6 @@ namespace boost { namespace numeric { namespace ublas {
         typedef unknown_storage_tag storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        matrix_binary_scalar2 (): 
-            e1_ (), e2_ () {}
         BOOST_UBLAS_INLINE
         matrix_binary_scalar2 (const expression1_type &e1, const expression2_type &e2): 
             e1_ (e1), e2_ (e2) {}
@@ -3464,9 +3271,6 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
-        matrix_vector_binary1 ():
-            e1_ (), e2_ () {}
-        BOOST_UBLAS_INLINE
         matrix_vector_binary1 (const expression1_type &e1, const expression2_type &e2):
             e1_ (e1), e2_ (e2) {}
 
@@ -3850,9 +3654,6 @@ namespace boost { namespace numeric { namespace ublas {
         typedef unknown_storage_tag storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        matrix_vector_binary2 (): 
-            e1_ (), e2_ () {}
         BOOST_UBLAS_INLINE
         matrix_vector_binary2 (const expression1_type &e1, const expression2_type &e2): 
             e1_ (e1), e2_ (e2) {}
@@ -4240,9 +4041,6 @@ namespace boost { namespace numeric { namespace ublas {
         typedef unknown_storage_tag storage_category;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        matrix_matrix_binary ():
-            e1_ (), e2_ () {}
         BOOST_UBLAS_INLINE
         matrix_matrix_binary (const expression1_type &e1, const expression2_type &e2):
             e1_ (e1), e2_ (e2) {}
@@ -4916,9 +4714,6 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename E::const_closure_type expression_closure_type;
 
         // Construction and destruction
-        BOOST_UBLAS_INLINE
-        matrix_scalar_unary ():
-            e_ () {}
         BOOST_UBLAS_INLINE
         explicit matrix_scalar_unary (const expression_type &e):
             e_ (e) {}
