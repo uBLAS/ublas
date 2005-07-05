@@ -329,23 +329,20 @@ namespace boost { namespace numeric { namespace ublas {
 
     private:
         // projection types
-        typedef noalias_proxy<E> noalias_proxy_type;
-        typedef const matrix_row<const E> const_matrix_row_type;
+        typedef vector_range<E> vector_range_type;
+        typedef const vector_range<const E> const_vector_range_type;
+        typedef vector_slice<E> vector_slice_type;
+        typedef const vector_slice<const E> const_vector_slice_type;
         typedef matrix_row<E> matrix_row_type;
-        typedef const matrix_column<const E> const_matrix_column_type;
+        typedef const matrix_row<const E> const_matrix_row_type;
         typedef matrix_column<E> matrix_column_type;
-        typedef const matrix_range<const E> const_matrix_range_type;
+        typedef const  matrix_column<const E> const_matrix_column_type;
         typedef matrix_range<E> matrix_range_type;
-        typedef const matrix_slice<const E> const_matrix_slice_type;
+        typedef const matrix_range<const E> const_matrix_range_type;
         typedef matrix_slice<E> matrix_slice_type;
-        typedef const matrix_indirect<const E> const_matrix_indirect_type;
-        typedef matrix_indirect<E> matrix_indirect_type;
+        typedef const matrix_slice<const E> const_matrix_slice_type;
 
     public:
-        BOOST_UBLAS_INLINE
-        noalias_proxy_type noalias () {
-            return noalias_proxy_type (operator () ());
-        }
         BOOST_UBLAS_INLINE
         const_matrix_row_type operator [] (std::size_t i) const {
             return const_matrix_row_type (operator () (), i);
@@ -370,7 +367,7 @@ namespace boost { namespace numeric { namespace ublas {
         matrix_column_type column (std::size_t j) {
             return matrix_column_type (operator () (), j);
         }
-#ifndef BOOST_UBLAS_NO_PROXY_SHORTCUTS
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
         BOOST_UBLAS_INLINE
         const_matrix_range_type operator () (const range &r1, const range &r2) const {
             return const_matrix_range_type (operator () (), r1, r2);
@@ -389,15 +386,15 @@ namespace boost { namespace numeric { namespace ublas {
         }
         template<class A>
         BOOST_UBLAS_INLINE
-        const_matrix_indirect_type operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) const {
-            return const_matrix_indirect_type (operator () (), ia1, ia2);
+        const matrix_indirect<const E, A> operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) const {
+            return const matrix_indirect<const E, A> (operator () (), ia1, ia2);
         }
         template<class A>
         BOOST_UBLAS_INLINE
-        matrix_indirect_type operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
-            return matrix_indirect_type (operator () (), ia1, ia2);
+        matrix_indirect<E, A> operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
+            return matrix_indirect<E, A> (operator () (), ia1, ia2);
         }
-#else
+#endif
         BOOST_UBLAS_INLINE
         const_matrix_range_type project (const range &r1, const range &r2) const {
             return const_matrix_range_type (operator () (), r1, r2);
@@ -416,15 +413,14 @@ namespace boost { namespace numeric { namespace ublas {
         }
         template<class A>
         BOOST_UBLAS_INLINE
-        const_matrix_indirect_type project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) const {
-            return const_matrix_indirect_type (operator () (), ia1, ia2);
+        const matrix_indirect<const E, A> project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) const {
+            return matrix_indirect<const E, A> (operator () (), ia1, ia2);
         }
         template<class A>
         BOOST_UBLAS_INLINE
-        matrix_indirect_type project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
-            return matrix_indirect_type (operator () (), ia1, ia2);
+        matrix_indirect<E, A> project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
+            return matrix_indirect<E, A> (operator () (), ia1, ia2);
         }
-#endif
     };
 
 #ifdef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
