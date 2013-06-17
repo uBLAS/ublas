@@ -1,0 +1,5 @@
+misc/CODE.pro
+misc/CODE.pro.user
+misc/pmake
+misc/bin/*
+misc/obj/*
