@@ -1,6 +1,7 @@
 /** -*- c++ -*- \file mult.hpp \brief test simple matrix multiplication */
 
-#include "mult.hpp"
+#include "simple_mult.hpp"
+#include "strassen_mult.hpp"
 
 typedef double DBL;
 using namespace std;
@@ -37,54 +38,33 @@ void random_init( matrix<T>& m, int r ) {
 }
 
 /***************************************************************************//**
- * @brief main
+ * @brief matrix multiplication
  * @param argc
  * @param argv
  * @return 0=success / 1=fail
  *
  */
-int main( int argc, char** argv ) {
-
-	//init time
-	srand(time(NULL));
-
-	//parameters declaration
-	int n=M1S1, m=M2S2, k=M1M2, r=R;
-	if( argc >= 4){
-		n = atoi(argv[1]);
-		m = atoi(argv[2]);
-		k = atoi(argv[3]);
-		if( argc == 5) r = atoi(argv[4]);
-	}
-	else if( argc>1 && argc<4 ) return 1;
-
-	/* INT */
+template <class T>
+void mult( int n, int m, int k, int r, T type) {
 	//init m1 & m2 random values
-	matrix<int> m1 (n,k);
-	matrix<int> m2 (k,m);
+	matrix<T> m1 (n,k);
+	matrix<T> m2 (k,m);
 	random_init(m1, r);
 	random_init(m2, r);
+
 	//print initial random matrice
 	print_matrix("m1:", m1);
 	print_matrix("m2:", m2);
-	//matrix multiplication
-	matrix<int> ret (m1.size1(), m2.size2());
-	mult( m1, m2, ret );
-	print_matrix("return:", ret);
 
-	/* DOUBLE */
-	//init m1 & m2 random values
-	matrix<DBL> DBLm1 (n,k);
-	matrix<DBL> DBLm2 (k,m);
-	random_init(DBLm1, r);
-	random_init(DBLm2, r);
-	//print initial random matrice
-	print_matrix("DBLm1:", DBLm1);
-	print_matrix("DBLm2:", DBLm2);
 	//matrix multiplication
-	matrix<DBL> DBLret (DBLm1.size1(), DBLm2.size2());
-	mult( DBLm1, DBLm2, DBLret );
-	print_matrix("return:", DBLret);
+	cout << "\n------------------------------\nSimple multiplication :" << endl;
+	matrix<T> simple_ret (m1.size1(), m2.size2());
+	simple_mult( m1, m2, simple_ret );
+	print_matrix("return:", simple_ret);
 
-	return 0;
+	cout << "\n------------------------------\nStrassen multiplication :" << endl;
+	matrix<T> strassen_ret (m1.size1(), m2.size2());
+	strassen_mult( m1, m2, strassen_ret );
+	print_matrix("return:", strassen_ret);
+
 }
