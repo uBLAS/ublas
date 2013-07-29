@@ -1,6 +1,6 @@
 //
 // Copyright (c) 2013
-// Sathyam M Vellal
+// Nasos Iliopoulos, Sathyam M Vellal
 //
 // Distributed under the Boost Software License, Version 1.0. 
 // (See accompanying file LICENSE_1.0.txt or copy at
@@ -9,8 +9,6 @@
 // The author gratefully acknowledges the support of
 // David Bellot and Nasos Iliopoulos in producing this work
 //
-
-
 
 namespace boost { namespace numeric { 
 	
