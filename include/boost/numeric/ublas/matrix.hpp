@@ -5328,7 +5328,6 @@ namespace boost { namespace numeric {
         size_type size2_;
         union {
             typename std::aligned_storage<sizeof (value_type), Alignment>::type pad_;
-            // unsigned char pad_[sizeof (T) + Alignment];
             value_type data_ [N] [M] = {0};
         } pool_;
     };
