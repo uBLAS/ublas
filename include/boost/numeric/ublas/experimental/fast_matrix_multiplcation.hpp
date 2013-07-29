@@ -10,6 +10,8 @@
 // David Bellot and Nasos Iliopoulos in producing this work
 //
 
+
+
 namespace boost { namespace numeric { 
 	
 	/** \brief main namespace of uBLAS.
@@ -113,12 +115,13 @@ namespace boost { namespace numeric {
 	template <typename MatrixType1, typename MatrixType2, typename MatrixType3>
 	void fast_matrix_multiply (MatrixType3 &C, const MatrixType2 &A, const MatrixType1 &B)
 	{
+		namespace ublas = boost::numeric::ublas;
 		typedef typename MatrixType1::size_type size_type;
 		typedef typename MatrixType1::value_type value_type;
 		const value_type zero = value_type (); // store zero value (used frequently later)
 		const std::size_t Alignment = 16; // Alignment of 16 bytes required to have vectorization when compiled
 
-		fill (C, zero); // Clear the result matrix
+		fast_matrix_multiplication::fill (C, zero); // Clear the result matrix
 		const size_type Z = A.size2 (); // Number of columns of A (aka K)
 		const size_type Y = C.size1 (); // Number of rows of C (aka M)
 		const size_type X = C.size2 (); // Number of columns of C (aka N)
@@ -143,9 +146,9 @@ namespace boost { namespace numeric {
 
 			// c_matrix_aligned - An c-array implementation of a matrix 
 			// 	which also guarantees alignment of the c-array within.
-			mspace::c_matrix_aligned<value_type, N, K, Alignment> Al;
-			mspace::c_matrix_aligned<value_type, K, M, Alignment> Bl;
-			mspace::c_matrix_aligned<value_type, N, M, Alignment> Cl;
+			ublas::c_matrix_aligned<value_type, N, K, Alignment> Al;
+			ublas::c_matrix_aligned<value_type, K, M, Alignment> Bl;
+			ublas::c_matrix_aligned<value_type, N, M, Alignment> Cl;
 
 			// Loop variables
 			size_type i, j, k, ii, jj, kk, MM, NN, KK;
@@ -156,11 +159,11 @@ namespace boost { namespace numeric {
 				KK = (k + K) > Z ? ZModK : K; // number of columns of A or rows of B of the block to be packed
 				for (i = 0; i < X; i += M) {
 					MM = (i + M) > X ? XModM : M; // number of rows A of the block to be packed
-					pack (Al, A, i, k, MM, KK); // pack a block of A into Al
+					fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
 					for (j = 0; j < Y; j += N) {
 						NN = (j + N) > Y ? YModN : N; // number of columns of B of the block to be packed
-						pack (Bl, B, k, j, KK, NN); // pack a block of B into Bl
-						fill (Cl, zero); // fill Cl with zeros
+						fast_matrix_multiplication::pack (Bl, B, k, j, KK, NN); // pack a block of B into Bl
+						fast_matrix_multiplication::fill (Cl, zero); // fill Cl with zeros
 
 						// Multiply the packed matrices
 						for (kk = 0; kk < KK; ++ kk) {
@@ -172,7 +175,7 @@ namespace boost { namespace numeric {
 						}
 
 						// unpack the result matrix Cl, and add to C
-						unpack_add(C, Cl, i, j, MM, NN);
+						fast_matrix_multiplication::unpack_add(C, Cl, i, j, MM, NN);
 					}
 				}
 			}
@@ -190,6 +193,6 @@ namespace boost { namespace numeric {
 				}
 			}
 		}
-	}
+	}	
 
 }}}
