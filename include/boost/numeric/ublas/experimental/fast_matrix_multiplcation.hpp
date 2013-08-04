@@ -97,6 +97,24 @@ namespace boost { namespace numeric {
 				}
 			}
 		}
+#if 0
+		template <typename MatrixType1, typename MatrixType2, typename MatrixType3>
+		void multiply (MatrixType3 &C, const MatrixType2 &A, const MatrixType1 &B)
+		{
+			typedef typename MatrixType1::size_type size_type;
+			size_type i, j, k;
+
+			TIMEPOINT(t1);
+			for (k = 0; k < CSIZE; ++ k) {
+				for (i = 0; i < CSIZE; ++ i) {
+					for (j = 0; j < CSIZE; ++ j) {
+						C(i, j) += A(i, k) * B(k, j);
+					}
+				}
+			}
+			DURATION(t1);
+		}
+#endif
 	}
 
 	//TODO: a better condition for using fast matrix-matrix multiplication
@@ -117,7 +135,7 @@ namespace boost { namespace numeric {
 		typedef typename MatrixType1::size_type size_type;
 		typedef typename MatrixType1::value_type value_type;
 		const value_type zero = value_type (); // store zero value (used frequently later)
-		const std::size_t Alignment = 16; // Alignment of 16 bytes required to have vectorization when compiled
+		const std::size_t Alignment = 64; // Alignment of 16 bytes required to have vectorization when compiled
 
 		fast_matrix_multiplication::fill (C, zero); // Clear the result matrix
 		const size_type Z = A.size2 (); // Number of columns of A (aka K)
@@ -125,7 +143,7 @@ namespace boost { namespace numeric {
 		const size_type X = C.size2 (); // Number of columns of C (aka N)
 
 		// Condition to use to fast matrix-matrix multiplication
-		if (X >= 256 || Y >= 256 || Z >= 256) {
+		// if (X >= 256 || Y >= 256 || Z >= 256) {
 			// TODO: Remove CSIZE for future.
 			// CSIZE is the size of the packed matrix. Packed matrices are made square in the following implementation.
 			// This preprocessor variable is bring used currently to determine the optimal size of the Packed Matrices.
@@ -134,9 +152,9 @@ namespace boost { namespace numeric {
 			#define CSIZE 256
 			#endif
 
-			const std::size_t M = CSIZE;
-			const std::size_t N = CSIZE;
-			const std::size_t K = CSIZE;
+			const std::size_t M = 64;
+			const std::size_t N = 256;
+			const std::size_t K = 64;
 
 			const std::size_t ZModK = Z % K; // Required later to use only part of the packed matrix 
 			const std::size_t YModN = Y % N; // 	when the size of the packed block is less than
@@ -144,53 +162,63 @@ namespace boost { namespace numeric {
 
 			// c_matrix_aligned - An c-array implementation of a matrix 
 			// 	which also guarantees alignment of the c-array within.
-			ublas::c_matrix_aligned<value_type, N, K, Alignment> Al;
-			ublas::c_matrix_aligned<value_type, K, M, Alignment> Bl;
-			ublas::c_matrix_aligned<value_type, N, M, Alignment> Cl;
+			ublas::c_matrix_aligned<value_type, M, K, Alignment> Al;
+			ublas::c_matrix_aligned<value_type, K, N, Alignment> Bl;
+			// ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
+			value_type* al[M*K];
+			value_type* bl[K*N];
 
 			// Loop variables
 			size_type i, j, k, ii, jj, kk, MM, NN, KK;
 
 			// using OpenMP
-			#pragma omp parallel for private(i, j, k, ii, jj, kk) shared(A, B, C)
+			#pragma omp parallel for private(i, j, k, ii, jj, kk) shared(A, B, C, Al, Bl)
 			for (k = 0; k < Z; k += K) {
 				KK = (k + K) > Z ? ZModK : K; // number of columns of A or rows of B of the block to be packed
 				for (i = 0; i < X; i += M) {
 					MM = (i + M) > X ? XModM : M; // number of rows A of the block to be packed
+					// TIMEPOINT(t2);
 					fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
+					// DURATION(t2);
 					for (j = 0; j < Y; j += N) {
 						NN = (j + N) > Y ? YModN : N; // number of columns of B of the block to be packed
+						// fast_matrix_multiplication::fill (Cl, zero); // fill Cl with zeros
+						ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
+						value_type* cl[M*N] = {0};		
 						fast_matrix_multiplication::pack (Bl, B, k, j, KK, NN); // pack a block of B into Bl
-						fast_matrix_multiplication::fill (Cl, zero); // fill Cl with zeros
+						// fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
 
 						// Multiply the packed matrices
-						for (kk = 0; kk < KK; ++ kk) {
-							for (ii = 0; ii < MM; ++ ii) {
-								for (jj = 0; jj < NN; ++ jj) {
+						// TIMEPOINT(t1);
+						for (kk = 0; kk < K; ++ kk) {
+							for (ii = 0; ii < M; ++ ii) {
+								for (jj = 0; jj < N; ++ jj) {
 									Cl(ii, jj) += Al(ii, kk) * Bl(kk, jj);
 								}
 							}
 						}
+						// fast_matrix_multiplication::multiply (Cl, Al, Bl);
+						// DURATION(t1);
 
 						// unpack the result matrix Cl, and add to C
-						fast_matrix_multiplication::unpack_add(C, Cl, i, j, MM, NN);
+						fast_matrix_multiplication::unpack_add(C, Cl, i, j, M, N);
 					}
 				}
 			}
-		} else {
-			// The matrix is too small for the fast matrix-matrix multiplication to be used
+		// } else {
+		// 	// The matrix is too small for the fast matrix-matrix multiplication to be used
 
-			// loop variables
-			size_type i, j, k;
+		// 	// loop variables
+		// 	size_type i, j, k;
 
-			for (k = 0; k < Z; ++ k) {
-				for (i = 0; i < X; ++ i) {
-					for (j = 0; j < Y; ++ j) {
-						C(i, j) += A(i, k) * B(k, j);
-					}
-				}
-			}
-		}
+		// 	for (k = 0; k < Z; ++ k) {
+		// 		for (i = 0; i < X; ++ i) {
+		// 			for (j = 0; j < Y; ++ j) {
+		// 				C(i, j) += A(i, k) * B(k, j);
+		// 			}
+		// 		}
+		// 	}
+		// }
 	}	
 
 }}}
