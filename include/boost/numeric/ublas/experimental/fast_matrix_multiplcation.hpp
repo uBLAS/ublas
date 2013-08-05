@@ -94,6 +94,7 @@ namespace boost { namespace numeric {
 			for (size_type i = i0, m = 0; m < size1; ++ i, ++ m) {
 				for (size_type j = j0, n = 0; n < size2; ++ j, ++ n) {
 					x(i, j) += y(m, n);
+					// std::cout << "(" << i << ", " << j << "): " << x(i, j) << "\n";
 				}
 			}
 		}
@@ -139,8 +140,8 @@ namespace boost { namespace numeric {
 
 		fast_matrix_multiplication::fill (C, zero); // Clear the result matrix
 		const size_type Z = A.size2 (); // Number of columns of A (aka K)
-		const size_type Y = C.size1 (); // Number of rows of C (aka M)
-		const size_type X = C.size2 (); // Number of columns of C (aka N)
+		const size_type Y = C.size2 (); // Number of columns of C (aka N)
+		const size_type X = C.size1 (); // Number of rows of C (aka M)
 
 		// Condition to use to fast matrix-matrix multiplication
 		// if (X >= 256 || Y >= 256 || Z >= 256) {
@@ -164,44 +165,43 @@ namespace boost { namespace numeric {
 			// 	which also guarantees alignment of the c-array within.
 			ublas::c_matrix_aligned<value_type, M, K, Alignment> Al;
 			ublas::c_matrix_aligned<value_type, K, N, Alignment> Bl;
-			// ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
-			value_type* al[M*K];
-			value_type* bl[K*N];
+			value_type* al = Al.data ();
+			value_type* bl = Bl.data ();
+			value_type* cl;
 
 			// Loop variables
 			size_type i, j, k, ii, jj, kk, MM, NN, KK;
 
 			// using OpenMP
 			#pragma omp parallel for private(i, j, k, ii, jj, kk) shared(A, B, C, Al, Bl)
-			for (k = 0; k < Z; k += K) {
-				KK = (k + K) > Z ? ZModK : K; // number of columns of A or rows of B of the block to be packed
-				for (i = 0; i < X; i += M) {
-					MM = (i + M) > X ? XModM : M; // number of rows A of the block to be packed
-					// TIMEPOINT(t2);
+			for (i = 0; i < X; i += M) {
+				MM = (i + M) > X ? XModM : M; // number of rows A of the block to be packed
+				for (k = 0; k < Z; k += K) {
+					KK = (k + K) > Z ? ZModK : K; // number of columns of A or rows of B of the block to be packed
 					fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
-					// DURATION(t2);
 					for (j = 0; j < Y; j += N) {
 						NN = (j + N) > Y ? YModN : N; // number of columns of B of the block to be packed
-						// fast_matrix_multiplication::fill (Cl, zero); // fill Cl with zeros
 						ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
-						value_type* cl[M*N] = {0};		
+						// fast_matrix_multiplication::fill (Cl, 0.0);
 						fast_matrix_multiplication::pack (Bl, B, k, j, KK, NN); // pack a block of B into Bl
-						// fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
 
 						// Multiply the packed matrices
 						// TIMEPOINT(t1);
-						for (kk = 0; kk < K; ++ kk) {
-							for (ii = 0; ii < M; ++ ii) {
-								for (jj = 0; jj < N; ++ jj) {
+						for (ii = 0; ii < MM; ++ ii) {
+							for (kk = 0; kk < KK; ++ kk) {
+								for (jj = 0; jj < NN; ++ jj) {
 									Cl(ii, jj) += Al(ii, kk) * Bl(kk, jj);
+									// C(i+ii, j+jj) += A(i+ii, k+kk) * B(k+kk, j+jj);
 								}
+								// print (Cl);
 							}
 						}
-						// fast_matrix_multiplication::multiply (Cl, Al, Bl);
 						// DURATION(t1);
 
 						// unpack the result matrix Cl, and add to C
-						fast_matrix_multiplication::unpack_add(C, Cl, i, j, M, N);
+						fast_matrix_multiplication::unpack_add(C, Cl, i, j, MM, NN);
+						// std::cout << i << " " << j << " " << k << "\n";
+						// print (C);0
 					}
 				}
 			}
