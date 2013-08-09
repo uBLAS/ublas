@@ -138,9 +138,9 @@ namespace boost { namespace numeric {
 		const std::size_t Alignment = 64; // Alignment of 16 bytes required to have vectorization when compiled
 
 		fast_matrix_multiplication::fill (C, zero); // Clear the result matrix
-		const size_type Z = A.size2 (); // Number of columns of A (aka K)
-		const size_type Y = C.size1 (); // Number of rows of C (aka M)
-		const size_type X = C.size2 (); // Number of columns of C (aka N)
+		const size_type Z = C.size1 (); // Number of columns of A (aka K)
+		const size_type Y = C.size2 (); // Number of rows of C (aka M)
+		const size_type X = A.size2 (); // Number of columns of C (aka N)
 
 		// Condition to use to fast matrix-matrix multiplication
 		// if (X >= 256 || Y >= 256 || Z >= 256) {
@@ -165,8 +165,6 @@ namespace boost { namespace numeric {
 			ublas::c_matrix_aligned<value_type, M, K, Alignment> Al;
 			ublas::c_matrix_aligned<value_type, K, N, Alignment> Bl;
 			// ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
-			value_type* al[M*K];
-			value_type* bl[K*N];
 
 			// Loop variables
 			size_type i, j, k, ii, jj, kk, MM, NN, KK;
@@ -178,14 +176,13 @@ namespace boost { namespace numeric {
 				for (i = 0; i < X; i += M) {
 					MM = (i + M) > X ? XModM : M; // number of rows A of the block to be packed
 					// TIMEPOINT(t2);
-					fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
+					fast_matrix_multiplication::pack (Al, A, k, i, KK, MM); // pack a block of A into Al
 					// DURATION(t2);
 					for (j = 0; j < Y; j += N) {
 						NN = (j + N) > Y ? YModN : N; // number of columns of B of the block to be packed
 						// fast_matrix_multiplication::fill (Cl, zero); // fill Cl with zeros
-						ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
-						value_type* cl[M*N] = {0};		
-						fast_matrix_multiplication::pack (Bl, B, k, j, KK, NN); // pack a block of B into Bl
+						ublas::c_matrix_aligned<value_type, K, N, Alignment> Cl;		
+						fast_matrix_multiplication::pack (Bl, B, i, j, MM, NN); // pack a block of B into Bl
 						// fast_matrix_multiplication::pack (Al, A, i, k, MM, KK); // pack a block of A into Al
 
 						// Multiply the packed matrices
@@ -193,7 +190,7 @@ namespace boost { namespace numeric {
 						for (kk = 0; kk < K; ++ kk) {
 							for (ii = 0; ii < M; ++ ii) {
 								for (jj = 0; jj < N; ++ jj) {
-									Cl(ii, jj) += Al(ii, kk) * Bl(kk, jj);
+									Cl(kk, jj) += Al(kk, ii) * Bl(ii, jj);
 								}
 							}
 						}
@@ -201,7 +198,7 @@ namespace boost { namespace numeric {
 						// DURATION(t1);
 
 						// unpack the result matrix Cl, and add to C
-						fast_matrix_multiplication::unpack_add(C, Cl, i, j, M, N);
+						fast_matrix_multiplication::unpack_add(C, Cl, k, j, K, N);
 					}
 				}
 			}
