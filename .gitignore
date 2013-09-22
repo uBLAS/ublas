@@ -1,8 +1,9 @@
 misc/*
 include/boost/numeric/ublas/build-distributed-Desktop-Debug/
-include/boost/numeric/ublas/distributed/Makefile
 include/boost/numeric/ublas/distributed/distributed.pro
 include/boost/numeric/ublas/distributed/distributed.pro.user
 include/boost/numeric/ublas/distributed/test
 include/boost/numeric/ublas/distributed/distributed
 include/boost/numeric/ublas/distributed/*.o
+include/boost/numeric/ublas/distributed/bin/*
+include/boost/numeric/ublas/distributed/obj/*

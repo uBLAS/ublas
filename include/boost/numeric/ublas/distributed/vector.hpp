@@ -2,7 +2,7 @@
 #ifndef _BOOST_UBLAS_DISTRIBUTED_VECTOR_
 #define _BOOST_UBLAS_DISTRIBUTED_VECTOR_
 
-#include "controller.hpp"
+#include "Controller.hpp"
 
 namespace boost { namespace numeric { namespace ublas { namespace distributed {
 
