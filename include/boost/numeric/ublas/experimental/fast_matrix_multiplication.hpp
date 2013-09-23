@@ -46,6 +46,32 @@ namespace boost { namespace numeric {
 			}
 		}
 
+		/** \brief Clear matrix with zero equivalent
+		 *
+		 * A helper function for fast matrix multiplication.
+		 * Fills the given matrix with a given value
+		 *
+		 * \param M Matrix to be filled
+		 */
+		template <typename MatrixType>
+		void clear (MatrixType &M)
+		{
+			typedef typename MatrixType::size_type size_type;
+			typedef typename MatrixType::value_type value_type;
+
+			const size_type size1 = M.size1 ();
+			const size_type size2 = M.size2 ();
+			size_type i, j;
+			const value_type zero = value_type();
+
+//			#pragma omp parallel for private(i, j)
+			for (i = 0; i < size1; ++ i) {
+				for (j = 0; j < size2; ++j) {
+					M(i, j) = zero;
+				}
+			}
+		}
+
 		/** \brief Pack a matrix into another
 		 *
 		 * A helper function for fast matrix multiplication.
@@ -149,13 +175,13 @@ namespace boost { namespace numeric {
 		const size_type X = A.size2 (); // Number of columns of C (aka N)
 
 		// Condition to use to fast matrix-matrix multiplication
-		if (X >= 256 || Y >= 256 || Z >= 256) {
+//		if (X >= 256 || Y >= 256 || Z >= 256) {
 
 			const std::size_t M = 64;
 			const std::size_t N = 256;
 			const std::size_t K = 64;
 
-			const std::size_t ZModK = Z % K; // Required later to use only part of the packed matrix 
+			const std::size_t ZModK = Z % K; // Required later to use only part notify-send -t 0 "Bye Bye!" of the packed matrix
 			const std::size_t YModN = Y % N; // 	when the size of the packed block is less than
 			const std::size_t XModM = X % M; // 	the size of the packed matrix
 
@@ -163,7 +189,6 @@ namespace boost { namespace numeric {
 			// 	which also guarantees alignment of the c-array within.
 			ublas::c_matrix_aligned<value_type, M, K, Alignment> Al;
 			ublas::c_matrix_aligned<value_type, K, N, Alignment> Bl;
-			// ublas::c_matrix_aligned<value_type, M, N, Alignment> Cl;
 
 			// Loop variables
 			size_type i, j, k, ii, jj, kk, MM = M, NN = N, KK = K;
@@ -181,6 +206,8 @@ namespace boost { namespace numeric {
 						NN = (j + N) > Y ? YModN : N; // number of columns of B of the block to be packed
 						fast_matrix_multiplication::pack (Bl, B, i, j, MM, NN); // pack a block of B into Bl
 						ublas::c_matrix_aligned<value_type, K, N, Alignment> Cl;
+						Cl.clear();
+//						fast_matrix_multiplication::clear(Cl);
 						// Multiply the packed matrices
 						for (kk = 0; kk < KK; ++ kk) {
 							for (ii = 0; ii < MM; ++ ii) {
@@ -189,16 +216,17 @@ namespace boost { namespace numeric {
 								}
 							}
 						}
+
 						// unpack the result matrix Cl, and add to C
 						fast_matrix_multiplication::unpack_add(C, Cl, k, j, KK, NN);
 					}
 				}
 			}
 			}
-		} else {
-			// Matrix size small to apply the , a normal multiplication is sufficient
-			prod(A, B, C);
-		}
+//		} else {
+//			// Matrix size small to apply the , a normal multiplication is sufficient
+//			prod(A, B, C);
+//		}
 	}	
 
 }}}
