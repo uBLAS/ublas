@@ -175,7 +175,7 @@ namespace boost { namespace numeric {
 		const size_type X = A.size2 (); // Number of columns of C (aka N)
 
 		// Condition to use to fast matrix-matrix multiplication
-//		if (X >= 256 || Y >= 256 || Z >= 256) {
+		if (X >= 256 || Y >= 256 || Z >= 256) {
 
 			const std::size_t M = 64;
 			const std::size_t N = 256;
@@ -223,10 +223,10 @@ namespace boost { namespace numeric {
 				}
 			}
 			}
-//		} else {
-//			// Matrix size small to apply the , a normal multiplication is sufficient
-//			prod(A, B, C);
-//		}
+		} else {
+			// Matrix size small to apply the , a normal multiplication is sufficient
+			prod(A, B, C);
+		}
 	}	
 
 }}}
