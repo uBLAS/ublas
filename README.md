@@ -10,6 +10,6 @@ at https://github.com/uBLAS/ublas
 - For any other questions, you can contact David at david.bellot@gmail.com
 
 - version numbers have never been used for this library until 02 March 2014.
-  So we start at v1.0 on that day. test
+  So we start at v1.0 on that day.
 
 last update: 1 April 2014
