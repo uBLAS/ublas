@@ -10,7 +10,9 @@ HEADERS += \
     ../../../test/test4.hpp \
     ../../../test/test3.hpp \
     ../../../test/test2.hpp \
-    ../../../test/test1.hpp
+    ../../../test/test1.hpp \
+    ../../../test/common/testhelper.hpp \
+    ../../../test/common/init.hpp
 
 SOURCES += \
     ../../../test/triangular_layout.cpp \
@@ -57,4 +59,5 @@ SOURCES += \
     ../../../test/num_columns.cpp \
     ../../../test/concepts.cpp \
     ../../../test/comp_mat_erase.cpp \
-    ../../../test/begin_end.cpp
+    ../../../test/begin_end.cpp \
+    ../../../test/test_fixed_containers.cpp
