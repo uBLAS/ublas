@@ -11,6 +11,11 @@
 //
 
 #include <boost/numeric/ublas/operation.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace boost { namespace numeric { 
 	
@@ -194,9 +199,13 @@ namespace boost { namespace numeric {
 			size_type i, j, k, ii, jj, kk, MM = M, NN = N, KK = K;
 
 			// using OpenMP
+#ifdef _OPENMP
 #pragma omp parallel private(i, j, k, ii, jj, kk) shared(A, B, C, Al, Bl)
+#endif
 			{
+#ifdef _OPENMP
 			#pragma omp for
+#endif
 			for (k = 0; k < Z; k += K) {
 				KK = (k + K) > Z ? ZModK : K; // number of columns of A or rows of B of the block to be packed
 				for (i = 0; i < X; i += M) {

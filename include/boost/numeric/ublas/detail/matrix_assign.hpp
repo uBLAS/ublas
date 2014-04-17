@@ -1259,7 +1259,6 @@ namespace detail {
     void matrix_swap (M &m, matrix_expression<E> &e, dense_proxy_tag, row_major_tag) {
         typedef F<typename M::iterator2::reference, typename E::reference> functor_type;
         // R unnecessary, make_conformant not required
-        typedef typename M::size_type size_type;
         typedef typename M::difference_type difference_type;
         typename M::iterator1 it1 (m.begin1 ());
         typename E::iterator1 it1e (e ().begin1 ());
@@ -1268,7 +1267,7 @@ namespace detail {
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
             typename M::iterator2 it2 (it1.begin ());
             typename E::iterator2 it2e (it1e.begin ());
-            difference_type size2 (BOOST_UBLAS_SAME (m.size2 (), size_type (it1e.end () - it2e)));
+            difference_type size2 (BOOST_UBLAS_SAME (m.size2 (), typename M::size_type (it1e.end () - it2e)));
 #else
             typename M::iterator2 it2 (begin (it1, iterator1_tag ()));
             typename E::iterator2 it2e (begin (it1e, iterator1_tag ()));
@@ -1285,16 +1284,15 @@ namespace detail {
     void matrix_swap (M &m, matrix_expression<E> &e, dense_proxy_tag, column_major_tag) {
         typedef F<typename M::iterator1::reference, typename E::reference> functor_type;
         // R unnecessary, make_conformant not required
-        typedef typename M::size_type size_type;
         typedef typename M::difference_type difference_type;
         typename M::iterator2 it2 (m.begin2 ());
         typename E::iterator2 it2e (e ().begin2 ());
-        difference_type size2 (BOOST_UBLAS_SAME (m.size2 (), size_type (e ().end2 () - it2e)));
+        difference_type size2 (BOOST_UBLAS_SAME (m.size2 (), typename M::size_type (e ().end2 () - it2e)));
         while (-- size2 >= 0) {
 #ifndef BOOST_UBLAS_NO_NESTED_CLASS_RELATION
             typename M::iterator1 it1 (it2.begin ());
             typename E::iterator1 it1e (it2e.begin ());
-            difference_type size1 (BOOST_UBLAS_SAME (m.size1 (), size_type (it2e.end () - it1e)));
+            difference_type size1 (BOOST_UBLAS_SAME (m.size1 (), typename M::size_type (it2e.end () - it1e)));
 #else
             typename M::iterator1 it1 (begin (it2, iterator2_tag ()));
             typename E::iterator1 it1e (begin (it2e, iterator2_tag ()));

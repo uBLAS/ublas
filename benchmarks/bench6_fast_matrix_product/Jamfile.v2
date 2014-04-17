@@ -1,0 +1,14 @@
+# Copyright (c) 2004-2010 Michael Stevens, David Bellot
+# Use, modification and distribution are subject to the
+# Boost Software License, Version 1.0. (See accompanying file
+# LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# bench6_fast_matrix_product benchmark
+
+exe bench6_fast_matrix_product
+    : matrix_product_bench.cpp
+    :
+    :
+    : <toolset>gcc:<cxxflags>-fopenmp
+      <toolset>gcc:<linkflags>-fopenmp
+    ;
