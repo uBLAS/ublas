@@ -6,9 +6,16 @@
 # bench6_fast_matrix_product benchmark
 
 exe bench6_fast_matrix_product
-    : matrix_product_bench.cpp
+    : matrix_product_bench.cpp fast_mult.cpp
     :
     :
     : <toolset>gcc:<cxxflags>-fopenmp
       <toolset>gcc:<linkflags>-fopenmp
+    ;
+
+exe kernel_benchmarks
+    : kernel_benchmarks.cpp kernels.cpp tests.cpp
+    :
+    :
+    :
     ;

@@ -58,15 +58,20 @@ void randomFill( MatrixType &m)
 
     for ( size_type i = 0; i != m.size1(); i++ )
     {
-        for ( size_type j = 0; j != m.size1(); j++ )
+        for ( size_type j = 0; j != m.size2(); j++ )
         {
             m( i, j ) = 10.0 * rand() /RAND_MAX;
         }
     }
 }
 
-double mflops(std::size_t size, double duration) {
-    return (size*size*size)/(duration)/1000000.0;
+inline double mflops(std::size_t size, double duration) {
+    return (2*size*size*size)/(duration)/1000000.0;
+}
+
+inline double mflops( std::size_t n, std::size_t m, std::size_t l, double duration )
+{
+    return n*l*(2*m-1)/(duration)/1000000.0;
 }
 
 typedef  double                     value_type;
@@ -116,6 +121,51 @@ void runTest(test_sizes &sizes, test_names &names, test_performances &performanc
     performances.push_back( performance );
 
 }
+
+template < std::size_t N, std::size_t M, std::size_t L, class MatrixType, class F>
+void runStaticTest(test_performances &performances, std::string name, F f) {
+
+    cout << "Runing: " << name << endl;
+
+    std::vector<double> performance;
+
+    auto start = tic();
+
+    std::size_t num_threads = 1;
+#pragma omp parallel
+    {
+#pragma omp master
+        {
+            num_threads = omp_get_num_threads();
+        }
+    }
+
+    MatrixType A( N, M ), B(M, num_threads * L), C( N, num_threads * L );
+    randomFill( A );
+    randomFill( B );
+
+    double duration = 0;
+
+    std::size_t count = 0;
+
+    start = tic();
+
+    while( duration < 0.5 )
+    {
+        f(A, B, C);
+        duration = toc( start );
+        count++;
+    }
+
+    auto p =  mflops( N, M, num_threads *L, duration/count );
+    performance.push_back(  p );
+    cout << N << ", " << M << ", " << num_threads *L << ": " <<p << endl;
+
+
+    performances.push_back( performance );
+
+}
+
 
 void printResults( test_sizes sizes , test_names names, test_performances performances)
 {
@@ -257,22 +307,72 @@ void mult_nasos2( MatrixType1 & A, MatrixType2& B, MatrixType3&C )
 {
     typedef typename MatrixType1::value_type value_type;
 
+    typedef ublas::fixed_matrix<value_type, N, L> matNxL;
+    typedef ublas::fixed_matrix<value_type, N, M> matNxM;
+    typedef ublas::fixed_matrix<value_type, M, L> matMxL;
+
     for ( std::size_t i = 0; i < A.size1(); i+=N)
     {
 #pragma omp parallel for
-        for ( std::size_t j=0; j < A.size2(); j+=L)
+        for ( std::size_t j=0; j < B.size2(); j+=L)
         {
-            ublas::fixed_matrix<value_type, N, L> Cl;
+            matNxL Cl;
             fill(Cl, 0.0);
-            for ( std::size_t k=0; k < B.size2(); k += M)
+            for ( std::size_t k=0; k < B.size1(); k += M)
             {
-                ublas::fixed_matrix<value_type, N, M> Al;
+                matNxM Al;
                 pack(Al, A, i, k, N, M);
 
-                ublas::fixed_matrix<value_type, M, L> Bl;
+                matMxL Bl;
                 pack(Bl, B, k, j, M, L);
 
-                //multiply_add<N, M, L>( Al, Bl, Cl);
+                for ( std::size_t ii = 0; ii < N; ii++)
+                {
+                    for ( std::size_t kk = 0; kk != M; kk++)
+                    {
+                        for ( std::size_t jj = 0; jj < L; jj++)
+                        {
+                            Cl(ii, jj) += Al(ii, kk) * Bl (kk,jj);
+                        }
+                    }
+                }
+
+            }
+            unpack( C, Cl, i, j); // unpack Ci into C at position (i,j)
+        }
+    }
+}
+
+
+
+template < std::size_t N, std::size_t M, std::size_t L, std::size_t NT, class MatrixType1, class MatrixType2, class MatrixType3>
+void mat_mult( const MatrixType1 & A, const MatrixType2& B, MatrixType3&C )
+{
+
+    if (NT > 0 ) {
+        omp_set_num_threads( NT );
+    }
+
+    typedef typename MatrixType1::value_type value_type;
+
+    typedef ublas::fixed_matrix<value_type, N, L> matNxL;
+    typedef ublas::fixed_matrix<value_type, N, M> matNxM;
+    typedef ublas::fixed_matrix<value_type, M, L> matMxL;
+
+    for ( std::size_t i = 0; i < A.size1(); i += N)
+    {
+#pragma omp parallel for
+        for ( std::size_t j=0; j < B.size2(); j+=L)
+        {
+            matNxL Cl;
+            fill(Cl, 0.0);
+            for ( std::size_t k=0; k < B.size1(); k += M)
+            {
+                matNxM Al;
+                pack(Al, A, i, k, N, M);
+
+                matMxL Bl;
+                pack(Bl, B, k, j, M, L);
 
                 for ( std::size_t ii = 0; ii < N; ii++)
                 {
@@ -294,7 +394,6 @@ void mult_nasos2( MatrixType1 & A, MatrixType2& B, MatrixType3&C )
 }
 
 
-
 template <class AE>
 typename AE::value_type mean_square(const ublas::matrix_expression<AE> &me) {
     using namespace ublas;
@@ -302,7 +401,7 @@ typename AE::value_type mean_square(const ublas::matrix_expression<AE> &me) {
     typename AE::size_type i, j;
     for (i=0; i!= me().size1(); i++) {
         for (j=0; j!= me().size2(); j++) {
-          s+= scalar_traits<typename AE::value_type>::type_abs(me()(i,j));
+            s+= scalar_traits<typename AE::value_type>::type_abs(me()(i,j));
         }
     }
     return s/me().size1()*me().size2();
@@ -311,18 +410,18 @@ typename AE::value_type mean_square(const ublas::matrix_expression<AE> &me) {
 template < class M1, class M2 >
 bool compare( const boost::numeric::ublas::matrix_expression<M1> & m1,
               const boost::numeric::ublas::matrix_expression<M2> & m2 ) {
-  size_t size1 = (std::min)(m1().size1(), m2().size1());
-  size_t size2 = (std::min)(m1().size2(), m2().size2());
-  for (size_t i=0; i < size1; ++i) {
-    for (size_t j=0; j < size2; ++j) {
-      if ( fabs( m1()(i,j) - m2()(i,j)) > 1e-6 )
-      {
-          cout << m1()(i,j) << ", " << m2()(i,j) << endl;
-          return false;
-      }
+    size_t size1 = (std::min)(m1().size1(), m2().size1());
+    size_t size2 = (std::min)(m1().size2(), m2().size2());
+    for (size_t i=0; i < size1; ++i) {
+        for (size_t j=0; j < size2; ++j) {
+            if ( fabs( m1()(i,j) - m2()(i,j)) > 1e-6 )
+            {
+                cout << m1()(i,j) << ", " << m2()(i,j) << endl;
+                return false;
+            }
+        }
     }
-  }
-  return true;
+    return true;
 }
 
 

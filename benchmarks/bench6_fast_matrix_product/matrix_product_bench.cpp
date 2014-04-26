@@ -10,6 +10,7 @@
 #ifdef BOOST_ULBAS_CPP_GE_2011
 
 #include "matrix_product_bench.hpp"
+#include "fast_mult.hpp"
 #include <functional>
 #include <fstream>
 #include <ios>
@@ -43,12 +44,12 @@ inline void nasos_mult_v( const ublas_matrix_type &A, const ublas_matrix_type &B
 
 inline void nasos_mult2( const ublas_matrix_type &A, const ublas_matrix_type &B, ublas_matrix_type &C)
 {
-// Good choices:
-// 256 16 128
-// 256 32 128
-// 128 16 64
-// 128 16 128
- // 64 32 32
+    // Good choices:
+    // 256 16 128
+    // 256 32 128
+    // 128 16 64
+    // 128 16 128
+    // 64 32 32
 
 #if  1
 #ifdef _OPENMP
@@ -92,9 +93,16 @@ inline void nasos_mult2( const ublas_matrix_type &A, const ublas_matrix_type &B,
         }
     }
 # else
-   mult_nasos2<NNN,MMM,LLL> (A, B, C);
+    mult_nasos2<NNN,MMM,LLL> (A, B, C);
 #endif
 }
+
+
+inline void nasos_mult3( const ublas_matrix_type &A, const ublas_matrix_type &B, ublas_matrix_type &C)
+{
+    mult_nasos2<NNN,MMM,LLL> (A, B, C);
+}
+
 
 int main() {
 
@@ -111,13 +119,16 @@ int main() {
     test_names names;
     test_performances performances;
 
-    sizes.push_back( 64 );
-    sizes.push_back( 128 );
-    sizes.push_back( 256 );
-        for ( std::size_t i = 512; i<=2048; i+=512)
-        {
-            sizes.push_back( i );
-        }
+    /*sizes.push_back( 4 );
+    sizes.push_back( 8 );
+    sizes.push_back( 32 );
+     sizes.push_back( 64 );
+     sizes.push_back( 128 );*/
+     sizes.push_back( 256 );
+    for ( std::size_t i = 512; i<=2048; i+=512)
+    {
+        sizes.push_back( i );
+    }
 
     ublas_matrix_type A(512,512),B(512,512),C(512,512), C2(512,512);
 
@@ -134,7 +145,10 @@ int main() {
     runTest<eigen_matrix_type>( sizes, names, performances, "eigen3" , eigenmultiply );
     // runTest<ublas_matrix_type>( sizes, names, performances, "ublas::fast_prod" , ublas_fast_multiply );
     //runTest<ublas_matrix_type>( sizes, names, performances, "mult_nasos" , nasos_mult );
-    runTest<ublas_matrix_type>( sizes, names, performances, "mult_nasos2" , nasos_mult2 );
+    runTest<ublas_matrix_type>( sizes, names, performances, "mult_nasos2" , nasos_mult3 );
+    runTest<ublas_matrix_type>( sizes, names, performances, "mult_nasos4" , nasos_mult4 );
+
+    //runStaticTest<NNN, MMM, LLL, ublas_matrix_type>( performances, "Static test NXMXL", nasos_mult3);
 
     double med = 0;
     auto last = performances.size()-1;
@@ -145,10 +159,19 @@ int main() {
 
     med /= performances[last].size();
 
-    std::ofstream ofile;
-    ofile.open ("res.txt", std::ios::app);
-    ofile << NNN << ", " << MMM << ", " << LLL << ", " << med << endl;
-    ofile.close();
+    std::size_t num_threads;
+#pragma omp parallel
+    {
+#pragma omp master
+        {
+            num_threads = omp_get_num_threads();
+        }
+    }
+
+//    std::ofstream ofile;
+//    ofile.open ("res.txt", std::ios::app);
+//    ofile << num_threads << ", " << NNN << ", " << MMM << ", " << num_threads*LLL << ", " << med << endl;
+//    ofile.close();
 
     printResults( sizes, names, performances);
 
