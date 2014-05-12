@@ -26,7 +26,7 @@ inline void Ublasmarks::SetSteps(size_t newSteps) {
     steps = newSteps;
 }
 
-inline void Ublasmarks::EstimateFlops(size_t f) {
+inline void Ublasmarks::SetFlops(size_t f) {
     flops = f;
 }
 
@@ -124,6 +124,21 @@ void Ublasmarks::SmatSvecRun(std::string benchmark) {
     
     if(benchmark == "smatsvecmult"){
         uBlas_result = smatsvecmult(size, steps);
+    }
+    else if(benchmark == "custom"){
+        uBlas_result = custom(size, steps);
+    }
+    else{
+        std::cerr << "Ublasmarks benchmark does not exist." << std::endl;
+        exit(1);
+    }
+    
+}
+
+void Ublasmarks::SmatVecRun(std::string benchmark) {
+    
+    if(benchmark == "smatvecmult"){
+        uBlas_result = smatvecmult(size, steps);
     }
     else if(benchmark == "custom"){
         uBlas_result = custom(size, steps);

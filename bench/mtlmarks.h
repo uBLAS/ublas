@@ -16,6 +16,7 @@
 #include "kernels/mtl/SmatSmatAdd.cpp"
 #include "kernels/mtl/SmatSmatMult.cpp"
 #include "kernels/mtl/SmatSvecMult.cpp"
+#include "kernels/mtl/SmatVecMult.cpp"
 #include "kernels/mtl/VecScalarMult.cpp"
 #include "kernels/mtl/VecVecAdd.cpp"
 #include "kernels/mtl/VecVecMult.cpp"
@@ -35,7 +36,7 @@ public:
     
     inline void SetSize(size_t);
     inline void SetSteps(size_t);
-    inline void EstimateFlops(size_t);
+    inline void SetFlops(size_t);
     
     /* Benchmark functions for the various types */
     void DmatScalarRun(std::string);
@@ -44,6 +45,7 @@ public:
     void DmatVecRun(std::string);
     void SmatSmatRun(std::string);
     void SmatSvecRun(std::string);
+    void SmatVecRun(std::string);
     void VecVecRun(std::string);
     
 private:

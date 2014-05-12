@@ -5,7 +5,7 @@
 inline void vinit(size_t N, Eigen::VectorXd& data) {
 
     for(size_t i = 0; i < N; ++i){
-        data(i) = distribution(generator);
+        data(i) = udistribution(generator);
     }
     
 }
@@ -14,17 +14,18 @@ inline void minit(size_t N, Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic
     
     for(size_t i = 0; i < N; ++i){
         for(size_t j = 0; j < N; ++j){
-            data(i, j) = distribution(generator);
+            data(i, j) = udistribution(generator);
         }
     }
     
 }
 
-inline void sminit(size_t N, Eigen::SparseMatrix<double>& data) {
+inline void sminit(size_t N, Eigen::SparseMatrix<double>& data, double filling = 0.5) {
     
-    for(size_t i = 0; i < N; ++i){
-        for(size_t j = 0; j < N; ++j){
-            data.insert(i, j) = distribution(generator);
+    size_t Nelements = N*filling;
+    for(size_t i = 0; i < Nelements; ++i){
+        for(size_t j = 0; j < Nelements; ++j){
+            data.insert(i, j) = udistribution(generator);
         }
     }
     data.makeCompressed();
@@ -34,7 +35,21 @@ inline void sminit(size_t N, Eigen::SparseMatrix<double>& data) {
 inline void svinit(size_t N, Eigen::SparseVector<double>& data) {
     
     for(size_t i = 0; i < N; ++i){
-        data.insert(i) = distribution(generator);
+        data.insert(i) = udistribution(generator);
     }
+    
+}
+
+inline void sminit_Snormal(size_t N, Eigen::SparseMatrix<double>& data, double filling = 0.5) { //default half filled
+    
+    size_t Nelements = N*filling;
+    for(size_t i = 0; i < Nelements; ++i){
+        for(size_t j = 0; j < Nelements; ++j){
+            double num = udistribution(generator);
+            data.insert(i, j) = num;
+            data.insert(j, i) = num;
+        }
+    }
+    data.makeCompressed();
     
 }

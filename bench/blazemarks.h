@@ -18,6 +18,7 @@
 #include "kernels/blaze/SmatSmatAdd.cpp"
 #include "kernels/blaze/SmatSmatMult.cpp"
 #include "kernels/blaze/SmatSvecMult.cpp"
+#include "kernels/blaze/SmatVecMult.cpp"
 #include "kernels/blaze/VecVscalarAdd.cpp"
 #include "kernels/blaze/VecScalarMult.cpp"
 #include "kernels/blaze/VecVecAdd.cpp"
@@ -38,7 +39,7 @@ public:
     
     inline void SetSize(size_t);
     inline void SetSteps(size_t);
-    inline void EstimateFlops(size_t);
+    inline void SetFlops(size_t);
     
     /* Benchmark functions for the various types */
     void DmatScalarRun(std::string);
@@ -47,6 +48,7 @@ public:
     void DmatVecRun(std::string);
     void SmatSmatRun(std::string);
     void SmatSvecRun(std::string);
+    void SmatVecRun(std::string);
     void VecVecRun(std::string);
     
 private:

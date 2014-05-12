@@ -26,7 +26,7 @@ inline void MTLmarks::SetSteps(size_t newSteps) {
     steps = newSteps;
 }
 
-inline void MTLmarks::EstimateFlops(size_t f) {
+inline void MTLmarks::SetFlops(size_t f) {
     flops = f;
 }
 
@@ -115,6 +115,21 @@ void MTLmarks::SmatSvecRun(std::string benchmark) {
     
     if(benchmark == "smatsvecmult"){
         mtl_result = smatsvecmult(size, steps);
+    }
+    else if(benchmark == "custom"){
+        mtl_result = custom(size, steps);
+    }
+    else{
+        std::cerr << "MKLmarks benchmark does not exist." << std::endl;
+        exit(1);
+    }
+    
+}
+
+void MTLmarks::SmatVecRun(std::string benchmark) {
+    
+    if(benchmark == "smatvecmult"){
+        mtl_result = smatvecmult(size, steps);
     }
     else if(benchmark == "custom"){
         mtl_result = custom(size, steps);

@@ -26,7 +26,7 @@ inline void Eigenmarks::SetSteps(size_t newSteps) {
     steps = newSteps;
 }
 
-inline void Eigenmarks::EstimateFlops(size_t f) {
+inline void Eigenmarks::SetFlops(size_t f) {
     flops = f;
 }
 
@@ -124,6 +124,21 @@ void Eigenmarks::SmatSvecRun(std::string benchmark) {
     
     if(benchmark == "smatsvecmult"){
         eigen_result = smatsvecmult(size, steps);
+    }
+    else if(benchmark == "custom"){
+        eigen_result = custom(size, steps);
+    }
+    else{
+        std::cerr << "Eigenmarks benchmark does not exist." << std::endl;
+        exit(1);
+    }
+    
+}
+
+void Eigenmarks::SmatVecRun(std::string benchmark) {
+    
+    if(benchmark == "smatvecmult"){
+        eigen_result = smatvecmult(size, steps);
     }
     else if(benchmark == "custom"){
         eigen_result = custom(size, steps);

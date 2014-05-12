@@ -5,12 +5,14 @@
 #ifndef CMARKS_H
 #define CMARKS_H
 
+#include "tavsparse/csparse.h" 
 #include "kernels/clike/init/init.cpp"
 #include "kernels/clike/Custom.cpp"
 #include "kernels/clike/Daxpy.cpp"
 #include "kernels/clike/DmatDmatAdd.cpp"
 #include "kernels/clike/DmatDmatMult.cpp"
 #include "kernels/clike/DmatVecMult.cpp"
+#include "kernels/clike/SmatVecMult.cpp"
 #include "kernels/clike/VecVecAdd.cpp"
 #include "kernels/clike/VecVecMult.cpp"
 
@@ -29,11 +31,12 @@ public:
     
     inline void SetSize(size_t);
     inline void SetSteps(size_t);
-    inline void EstimateFlops(size_t);
+    inline void SetFlops(size_t);
     
     /* Benchmark functions for the various types */
     void DmatDmatRun(std::string);
     void DmatVecRun(std::string);
+    void SmatVecRun(std::string);
     void VecVecRun(std::string);
     
 private:

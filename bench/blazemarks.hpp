@@ -26,7 +26,7 @@ inline void Blazemarks::SetSteps(size_t newSteps) {
     steps = newSteps;
 }
 
-inline void Blazemarks::EstimateFlops(size_t f) {
+inline void Blazemarks::SetFlops(size_t f) {
     flops = f;
 }
 
@@ -124,6 +124,21 @@ void Blazemarks::SmatSvecRun(std::string benchmark) {
     
     if(benchmark == "smatsvecmult"){
         blaze_result = smatsvecmult(size, steps);
+    }
+    else if(benchmark == "custom"){
+        blaze_result = custom(size, steps);
+    }
+    else{
+        std::cerr << "Blazemarks benchmark does not exist." << std::endl;
+        exit(1);
+    }
+    
+}
+
+void Blazemarks::SmatVecRun(std::string benchmark) {
+    
+    if(benchmark == "smatvecmult"){
+        blaze_result = smatvecmult(size, steps);
     }
     else if(benchmark == "custom"){
         blaze_result = custom(size, steps);

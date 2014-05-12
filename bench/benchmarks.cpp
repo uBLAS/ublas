@@ -24,32 +24,49 @@
 #include "mtlmarks.h"
 #include "cmarks.h"
 
-int main(int argc, char **argv){
+template <typename lib>
+void EstimateFlops(size_t N, lib& name) {
+    double filling = 0.5;
     
-    std::string ckernel = "dmatdmatmult";
-    size_t N = 1000;
+    name.SetFlops( N*(2*N*filling - 1) ); //flop complexity for sparse matrix and dense vector multiplication
+}
+
+int main(int argc, char **argv){ //need to check namespaces and functions in classes!
+    
+    std::string ckernel = "smatvecmult";
+    size_t N = 10000;
     size_t steps = 10;
     std::cout << "Using compute kernel " << ckernel << std::endl;
 
     clike::Cmarks cmarks(N, steps);
-    cmarks.DmatDmatRun(ckernel);
+    EstimateFlops(N, cmarks);
+    cmarks.SmatVecRun(ckernel);
     std::cout << "cmarks " << cmarks.GetClikeResult() << std::endl;
-
+    std::cout << "cmarks " << cmarks.GetFlops() * steps / cmarks.GetClikeResult() / 1E6 << std::endl << std::endl;
+    
     blaze::Blazemarks blazemarks(N, steps);
-    blazemarks.DmatDmatRun(ckernel);
+    EstimateFlops(N, blazemarks);
+    blazemarks.SmatVecRun(ckernel);
     std::cout << "blazemarks " << blazemarks.GetBlazeResult() << std::endl;
+    std::cout << "blazemarks " << blazemarks.GetFlops() * steps / blazemarks.GetBlazeResult() / 1E6 << std::endl << std::endl;
     
     boost::Ublasmarks ublasmarks(N, steps);
-    ublasmarks.DmatDmatRun(ckernel);
+    EstimateFlops(N, ublasmarks);
+    ublasmarks.SmatVecRun(ckernel);
     std::cout << "ublasmarks " << ublasmarks.GetuBlasResult() << std::endl;
+    std::cout << "ublasmarks " << ublasmarks.GetFlops() * steps / ublasmarks.GetuBlasResult() / 1E6 << std::endl << std::endl;
     
     eigen::Eigenmarks eigenmarks(N, steps);
-    eigenmarks.DmatDmatRun(ckernel);
+    EstimateFlops(N, eigenmarks);
+    eigenmarks.SmatVecRun(ckernel);
     std::cout << "eigenmarks " << eigenmarks.GetEigenResult() << std::endl;
+    std::cout << "eigenmarks " << eigenmarks.GetFlops() * steps / eigenmarks.GetEigenResult() / 1E6 << std::endl << std::endl;
 
     mtl::MTLmarks mtlmarks(N, steps);
-    mtlmarks.DmatDmatRun(ckernel);
+    EstimateFlops(N, mtlmarks);
+    mtlmarks.SmatVecRun(ckernel);
     std::cout << "mtlmarks " << mtlmarks.GetMTLResult() << std::endl;
+    std::cout << "mtlmarks " << mtlmarks.GetFlops() * steps / mtlmarks.GetMTLResult() / 1E6 << std::endl << std::endl;
 
 
     return 0;

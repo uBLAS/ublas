@@ -26,7 +26,7 @@ inline void Cmarks::SetSteps(size_t newSteps) {
     steps = newSteps;
 }
 
-inline void Cmarks::EstimateFlops(size_t f) {
+inline void Cmarks::SetFlops(size_t f) {
     flops = f;
 }
 
@@ -52,6 +52,21 @@ void Cmarks::DmatVecRun(std::string benchmark) {
     
     if(benchmark == "dmatvecmult"){
         clike_result = dmatvecmult(size, steps);
+    }
+    else if(benchmark == "custom"){
+        clike_result = custom(size, steps);
+    }
+    else{
+        std::cerr << "Cmarks benchmark does not exist." << std::endl;
+        exit(1);
+    }
+    
+}
+
+void Cmarks::SmatVecRun(std::string benchmark) {
+    
+    if(benchmark == "smatvecmult"){
+        clike_result = smatvecmult(size, steps);
     }
     else if(benchmark == "custom"){
         clike_result = custom(size, steps);

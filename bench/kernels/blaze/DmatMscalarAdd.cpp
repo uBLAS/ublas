@@ -1,5 +1,5 @@
 /*
- dense matrix and scalar addition kernel
+ dense matrix and scalar matrix addition kernel
 */
 
 namespace blaze {
@@ -15,7 +15,7 @@ double dmatmscalaradd(size_t N, size_t iterations = 1) {
     for(size_t i = 0; i < iterations; ++i){
         
         auto start = std::chrono::steady_clock::now();
-        //a = b + c;
+        a = b + blaze::DynamicMatrix<double>(N, N, c);
         auto end = std::chrono::steady_clock::now();
         
         auto diff = end - start;
@@ -24,12 +24,12 @@ double dmatmscalaradd(size_t N, size_t iterations = 1) {
     
     double tmin = *(std::min_element(times.begin(), times.end()));
     double tavg = average_time(times);
-    /*
-     // check to see if nothing happened during rum to invalidate the times
-     if(tmin*(1.0 + deviation*0.01) < tavg){
-     std::cerr << "uBLAS kernel 'dmatscalaradd': Time deviation too large!!!" << std::endl;
-     }
-     */
+    
+    // check to see if anything happened during run to invalidate the times
+    if(variance(tavg, times) > max_variance){
+        std::cerr << "blaze kernel 'dmatmscalaradd': Time deviation too large!!!" << std::endl;
+    }
+    
     return tavg;
     
 }

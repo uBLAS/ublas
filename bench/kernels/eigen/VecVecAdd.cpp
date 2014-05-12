@@ -25,12 +25,12 @@ double vecvecadd(size_t N, size_t iterations = 1){
     
     double tmin = *(std::min_element(times.begin(), times.end()));
     double tavg = average_time(times);
-    /*
-     // check to see if nothing happened during rum to invalidate the times
-     if(tmin*(1.0 + deviation*0.01) < tavg){
-     std::cerr << "uBLAS kernel 'vecvecadd': Time deviation too large!!!" << std::endl;
-     }
-     */
+    
+    // check to see if nothing happened during run to invalidate the times
+    if(variance(tavg, times) > max_variance){
+        std::cerr << "eigen kernel 'vecvecadd': Time deviation too large!!!" << std::endl;
+    }
+    
     return tavg;
     
 }
