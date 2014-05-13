@@ -20,7 +20,7 @@ inline void minit(size_t N, mtl::dense2D<double>& data) {
     
 }
 
-inline void sminit(size_t N, mtl::compressed2D<double>& data, double filling = 0.5) {
+inline void sminit(size_t N, mtl::compressed2D<double>& data, double filling = 0.25) {
     
     // Matrices are not initialized by default
     data = 0.0;
@@ -37,7 +37,7 @@ inline void sminit(size_t N, mtl::compressed2D<double>& data, double filling = 0
     
 }
 
-inline void sminit_Snormal(size_t N, mtl::compressed2D<double>& data, double filling = 0.5) { //default half filled
+inline void sminit_Snormal(size_t N, mtl::compressed2D<double>& data, double filling = 0.25) { 
     
     data = 0.0;
     mtl::mat::inserter< mtl::compressed2D<double> > ins(data);

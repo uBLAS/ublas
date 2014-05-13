@@ -29,7 +29,7 @@ inline void minit(size_t N, double** data) {
     
 }
 
-inline void sminit(size_t N, tav::SparseMatrix<double>& data, double filling = 0.5) {
+inline void sminit(size_t N, tav::SparseMatrix<double>& data, double filling = 0.25) {
     
     size_t Nelements = N*filling;
     for(size_t i = 0; i < Nelements; ++i){

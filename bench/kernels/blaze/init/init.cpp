@@ -20,7 +20,7 @@ inline void minit(size_t N, blaze::DynamicMatrix<double>& data) {
     
 }
 
-inline void sminit(size_t N, blaze::CompressedMatrix<double>& data, double filling = 0.5) {
+inline void sminit(size_t N, blaze::CompressedMatrix<double>& data, double filling = 0.25) {
     
     size_t Nelements = N*filling;
     for(size_t i = 0; i < Nelements; ++i){
@@ -39,7 +39,7 @@ inline void svinit(size_t N, blaze::CompressedVector<double>& data) {
     
 }
 
-inline void sminit_Snormal(size_t N, blaze::CompressedMatrix<double>& data, double filling = 0.5) { //default half filled
+inline void sminit_Snormal(size_t N, blaze::CompressedMatrix<double>& data, double filling = 0.25) { //default quarter filled
     
     size_t Nelements = N*filling;
     for(size_t i = 0; i < Nelements; ++i){

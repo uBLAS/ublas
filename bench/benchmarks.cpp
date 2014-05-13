@@ -26,7 +26,7 @@
 
 template <typename lib>
 void EstimateFlops(size_t N, lib& name) {
-    double filling = 0.5;
+    double filling = 0.25;
     
     name.SetFlops( N*(2*N*filling - 1) ); //flop complexity for sparse matrix and dense vector multiplication
 }
@@ -38,8 +38,7 @@ int main(int argc, char **argv){ //need to check namespaces and functions in cla
     size_t steps = 1;
     std::cout << "Using compute kernel " << ckernel << std::endl << std::endl;
 
-    for( ; N <= 10000
-        ; N *= 10){
+    for( ; N <= 100000; N *= 10){
         
         std::cout << "SIZE " << N << std::endl << std::endl;
 
