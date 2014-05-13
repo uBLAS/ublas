@@ -15,7 +15,7 @@ inline size_t Ublasmarks::GetFlops() const {
 }
 
 inline double Ublasmarks::GetuBlasResult() const {
-    return uBlas_result;
+    return uBlas_result / 1000.0; //convert to seconds
 }
 
 inline void Ublasmarks::SetSize(size_t newSize) {

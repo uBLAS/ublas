@@ -15,7 +15,7 @@ inline size_t Eigenmarks::GetFlops() const {
 }
 
 inline double Eigenmarks::GetEigenResult() const {
-    return eigen_result;
+    return eigen_result / 1000.0; //convert to seconds
 }
 
 inline void Eigenmarks::SetSize(size_t newSize) {

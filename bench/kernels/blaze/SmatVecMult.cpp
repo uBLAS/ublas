@@ -8,10 +8,10 @@ double smatvecmult(size_t N, size_t iterations = 1) {
     
     blaze::CompressedMatrix<double> a(N, N);
     blaze::DynamicVector<double> b(N), c(N);
-    
+
     sminit(a.rows(), a);
     vinit(b.size(), b);
-    
+
     std::vector<double> times;
     for(size_t i = 0; i < iterations; ++i){
         
@@ -21,6 +21,7 @@ double smatvecmult(size_t N, size_t iterations = 1) {
         
         auto diff = end - start;
         times.push_back(std::chrono::duration<double, std::milli> (diff).count()); //save time in ms for each iteration
+        
     }
     
     double tmin = *(std::min_element(times.begin(), times.end()));

@@ -15,7 +15,7 @@ inline size_t Cmarks::GetFlops() const {
 }
 
 inline double Cmarks::GetClikeResult() const {
-    return clike_result;
+    return clike_result / 1000.0; //convert to seconds
 }
 
 inline void Cmarks::SetSize(size_t newSize) {

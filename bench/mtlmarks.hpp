@@ -15,7 +15,7 @@ inline size_t MTLmarks::GetFlops() const {
 }
 
 inline double MTLmarks::GetMTLResult() const {
-    return mtl_result;
+    return mtl_result / 1000.0; //convert to seconds
 }
 
 inline void MTLmarks::SetSize(size_t newSize) {

@@ -15,7 +15,7 @@ inline size_t Blazemarks::GetFlops() const {
 }
 
 inline double Blazemarks::GetBlazeResult() const {
-    return blaze_result;
+    return blaze_result / 1000.0; //convert to seconds
 }
 
 inline void Blazemarks::SetSize(size_t newSize) {
