@@ -3,7 +3,7 @@
 */
 
 //typedef double value_type;
-const double max_variance = 1; // max variance of about 1 second
+const double max_variance = 5; // max variance of about 5 second
 
 // define a random generator for randomly initializing matrices and vectors
 std::mt19937 generator( std::chrono::system_clock::now().time_since_epoch().count() );

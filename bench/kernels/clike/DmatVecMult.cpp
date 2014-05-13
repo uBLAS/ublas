@@ -1,5 +1,5 @@
 /*
- dense matric and vector multiplication kernel
+ dense matrix and vector multiplication kernel
 */
 
 namespace clike {
@@ -45,7 +45,7 @@ double dmatvecmult(size_t N, size_t iterations = 1) {
     double tmin = *(std::min_element(times.begin(), times.end()));
     double tavg = average_time(times);
     
-    // check to see if nothing happened during run to invalidate the times
+    // check to see if anything happened during run to invalidate the times
     if(variance(tavg, times) > max_variance){
         std::cerr << "clike kernel 'dmatvecmult': Time deviation too large!!!" << std::endl;
     }

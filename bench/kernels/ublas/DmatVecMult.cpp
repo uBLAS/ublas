@@ -16,7 +16,8 @@ double dmatvecmult(size_t N, size_t iterations = 1) {
     for(size_t i = 0; i < iterations; ++i){
         
         auto start = std::chrono::steady_clock::now();
-        boost::numeric::ublas::axpy_prod(a, b, c, false);
+        //boost::numeric::ublas::axpy_prod(a, b, c, false);
+        noalias(c) = prod(a, b);
         auto end = std::chrono::steady_clock::now();
         
         auto diff = end - start;
