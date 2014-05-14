@@ -31,6 +31,17 @@ inline void sminit(size_t N, boost::numeric::ublas::compressed_matrix<double>& d
     
 }
 
+inline void sminit(size_t N, boost::numeric::ublas::mapped_matrix<double>& data, double filling = 0.25) { //default quarter filled
+    
+    size_t Nelements = N*filling;
+    for(size_t i = 0; i < Nelements; ++i){
+        for(size_t j = 0; j < Nelements; ++j){
+            data.insert_element( i, j, udistribution(generator) );
+        }
+    }
+    
+}
+
 inline void svinit(size_t N, boost::numeric::ublas::compressed_vector<double>& data) {
     
     for(size_t i = 0; i < N; ++i){

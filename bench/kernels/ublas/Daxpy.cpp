@@ -16,7 +16,7 @@ double daxpy(size_t N, size_t iterations = 1){
     for(size_t i = 0; i < iterations; ++i){
         
         auto start = std::chrono::steady_clock::now();
-        a += b * c;
+        noalias(a) += b * c;
         auto end = std::chrono::steady_clock::now();
         
         auto diff = end - start;

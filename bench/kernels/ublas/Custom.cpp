@@ -5,19 +5,18 @@
 namespace boost {
     
 double custom(size_t N, size_t iterations = 1){
-/*
-    boost::numeric::ublas::matrix<double> a(N, N), b(N, N), c(N, N);
     
-    minit(a.size1(), a);
-    minit(b.size1(), b);
-*/
+    boost::numeric::ublas::mapped_matrix<double> a(N, N);
+    boost::numeric::ublas::vector<double> b(N), c(N);
+    
+    sminit(a.size1(), a);
+    vinit(b.size(), b);
+    
     std::vector<double> times;
     for(size_t i = 0; i < iterations; ++i){
         
         auto start = std::chrono::steady_clock::now();
-        
-        //place custom code here
-        
+        noalias(c) = prod(a, b);
         auto end = std::chrono::steady_clock::now();
         
         auto diff = end - start;
