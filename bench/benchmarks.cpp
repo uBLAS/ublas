@@ -36,7 +36,7 @@ int main(int argc, char **argv){ //need to check namespaces and functions in cla
     
     std::string ckernel = "daxpy";
     size_t N = 10;
-    size_t steps = 1;
+    size_t steps = 100;
     std::cout << "Using compute kernel " << ckernel << std::endl << std::endl;
 
     for( ; N <= 10000000; N *= 10){
@@ -47,32 +47,32 @@ int main(int argc, char **argv){ //need to check namespaces and functions in cla
         EstimateFlops(N, cmarks);
         cmarks.VecVecRun(ckernel);
         std::cout << "cmarks " << cmarks.GetClikeResult() << " s " << std::endl;
-        std::cout << "cmarks " << (cmarks.GetFlops() * steps) / (cmarks.GetClikeResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
-
+        std::cout << "cmarks " << cmarks.GetFlops() / (cmarks.GetClikeResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
+        
         blaze::Blazemarks blazemarks(N, steps);
         EstimateFlops(N, blazemarks);
         blazemarks.VecVecRun(ckernel);
         std::cout << "blazemarks " << blazemarks.GetBlazeResult() << " s " << std::endl;
-        std::cout << "blazemarks " << (blazemarks.GetFlops() * steps) / (blazemarks.GetBlazeResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
-
+        std::cout << "blazemarks " << blazemarks.GetFlops() / (blazemarks.GetBlazeResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
+        
         boost::Ublasmarks ublasmarks(N, steps);
         EstimateFlops(N, ublasmarks);
         ublasmarks.VecVecRun(ckernel);
         std::cout << "ublasmarks " << ublasmarks.GetuBlasResult() << " s " << std::endl;
-        std::cout << "ublasmarks " << (ublasmarks.GetFlops() * steps) / (ublasmarks.GetuBlasResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
-
+        std::cout << "ublasmarks " << ublasmarks.GetFlops() / (ublasmarks.GetuBlasResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
+        
         eigen::Eigenmarks eigenmarks(N, steps);
         EstimateFlops(N, eigenmarks);
         eigenmarks.VecVecRun(ckernel);
         std::cout << "eigenmarks " << eigenmarks.GetEigenResult() << " s " << std::endl;
-        std::cout << "eigenmarks " << (eigenmarks.GetFlops() * steps) / (eigenmarks.GetEigenResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
-
+        std::cout << "eigenmarks " << eigenmarks.GetFlops() / (eigenmarks.GetEigenResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
+        
         mtl::MTLmarks mtlmarks(N, steps);
         EstimateFlops(N, mtlmarks);
         mtlmarks.VecVecRun(ckernel);
         std::cout << "mtlmarks " << mtlmarks.GetMTLResult() << " s " << std::endl;
-        std::cout << "mtlmarks " << (mtlmarks.GetFlops() * steps) / (mtlmarks.GetMTLResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
-
+        std::cout << "mtlmarks " << mtlmarks.GetFlops() / (mtlmarks.GetMTLResult() * 1E6) << " MFLOPS " << std::endl << std::endl;
+        
     }
 
     return 0;
