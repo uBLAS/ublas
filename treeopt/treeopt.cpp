@@ -287,7 +287,7 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
 public:
     
     enum {
-        treechanges = 1 + Tree_Optimizer<A>::treechanges + Tree_Optimizer<B>::treechanges + Tree_Optimizer<C>::treechanges + Tree_Optimizer<D>::treechanges + Tree_Optimizer<Matrix_Sum<C, Matrix_Product<A, B> >>::treechanges
+        treechanges = 1 + Tree_Optimizer<A>::treechanges + Tree_Optimizer<B>::treechanges + Tree_Optimizer<C>::treechanges + Tree_Optimizer<D>::treechanges
     };
     
     typedef Matrix_Sum< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
@@ -298,17 +298,11 @@ public:
     static NMatXpr build(const MatXpr& mxpr) { return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr; }
 };
 
-template <typename MatXpr, typename NMatXpr>
-NMatXpr optimize(const MatXpr& matxpr) {
-    NMatXpr nmatxpr = Tree_Optimizer<MatXpr>::build(matxpr);
-    return nmatxpr;
-}
-
 int main(){
 
 	Dense_Matrix<2, 2> a("a"), b("b"), c("c"), d("d");
 
-    auto xpr = b * c + d; // + d + a * b + c;
+    auto xpr = b * c + d + d + d;
     
     typedef __typeof(xpr) Xpr;
     
@@ -344,5 +338,12 @@ int main(){
     // std::cout << "cost " << xpr4.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr4>::treechanges << std::endl;
 
+    auto xpr5 = Tree_Optimizer<Xpr4>::build(xpr4);
+    typedef __typeof(xpr5) Xpr5;
+    std::cout << std::endl << "optimized version 5:";
+    std::cout << " " << xpr5.name() << std::endl;
+    // std::cout << "cost " << xpr5.op_cost << std::endl;
+    std::cout << "change " << Tree_Optimizer<Xpr5>::treechanges << std::endl;
+    
 	return 0;
 }
