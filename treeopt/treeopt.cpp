@@ -6,18 +6,64 @@ Tree optimizer prototype and test code.
 #include <cstdlib>
 #include <ctime>
 #include <vector>
-//#include <boost/utility/enable_if.hpp>
-//#include <boost/mpl/less_equal.hpp>
-//#include <boost/mpl/greater.hpp>
-//#include <boost/mpl/comparison.hpp>
+#include <boost/type_traits.hpp>
 
-//using namespace boost;
+using namespace boost;
 
 typedef double value_type; // simplifying things with the templates
 
+// this is for the type_traits
+class Base_Base { };
+
+template< bool Select    // Compile time selection
+, typename T1    // Type to be selected if Select=true
+, typename T2 >  // Type to be selected if Select=false
+struct SelectType {
+public:
+    typedef T1  Type;
+};
+
+template< typename T1    // Type not to be selected
+, typename T2 >  // Type to be selected
+struct SelectType<false, T1, T2>{
+public:
+    typedef T2  Type;
+};
+
+template< typename T >
+struct IsExpressionHelper {
+    
+    enum { value = is_base_of<Base_Base, T>::value && !is_base_of<T, Base_Base>::value };
+    typedef typename SelectType<value, true_type, false_type>::Type  Type;
+    
+};
+
+template< typename T >
+struct is_expression : public IsExpressionHelper<T>::Type {
+public:
+    
+    enum { value = IsExpressionHelper<T>::value };
+    typedef typename IsExpressionHelper<T>::Type  Type;
+    
+};
+
+template< typename T >
+struct IsTemporaryHelper{
+    enum { value = !is_reference<T>::value && !is_floating_point<T>::value && !is_expression<T>::value };
+    typedef typename SelectType<value, true_type, false_type>::Type  Type;
+};
+
+template< typename T >
+struct is_temporary : public IsTemporaryHelper<T>::Type {
+public:
+    enum { value = IsTemporaryHelper<T>::value };
+    typedef typename IsTemporaryHelper<T>::Type  Type;
+};
+
+
 //Base class.
 template <typename MatXpr>
-class Matrix_Base {
+class Matrix_Base : public Base_Base {
   
 public:
 
@@ -44,7 +90,7 @@ public:
 };
 
 //Dense matrix class that extends the base class
-template <size_t rows, size_t cols>
+template <size_t rows = 2, size_t cols = 2>
 class Dense_Matrix : public Matrix_Base< Dense_Matrix<rows, cols> > {
     
 public:
@@ -117,20 +163,21 @@ private:
 };
 
 //Represents the matrix sum.
-template <typename MatrixL, typename MatrixR>
+template <typename MatrixL, typename MatrixR >
 class Matrix_Sum : public Matrix_Base< Matrix_Sum<MatrixL, MatrixR> > {
     
 public:
     
     //typedef typename MatrixL::value_type value_type;
     typedef const Matrix_Sum Nested; //these are needed for the tree optimizer object
-    
+
     enum traits {
         RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime, 
         ColsAtCompileTime = MatrixL::traits::ColsAtCompileTime,
-        op_cost = RowsAtCompileTime * ColsAtCompileTime + MatrixL::traits::op_cost + MatrixR::traits::op_cost
+        op_cost = RowsAtCompileTime * ColsAtCompileTime + MatrixL::traits::op_cost + MatrixR::traits::op_cost,
+        temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
-    
+ 
     Matrix_Sum(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
     ~Matrix_Sum() {}
@@ -155,13 +202,14 @@ public:
     
     //typedef typename MatrixL::value_type value_type;
     typedef const Matrix_Difference Nested; //these are needed for the tree optimizer object
-    
+ 
     enum traits {
         RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime, 
         ColsAtCompileTime = MatrixL::traits::ColsAtCompileTime,
-        op_cost = RowsAtCompileTime * ColsAtCompileTime + MatrixL::traits::op_cost + MatrixR::traits::op_cost
+        op_cost = RowsAtCompileTime * ColsAtCompileTime, /*+ MatrixL::traits::op_cost + MatrixR::traits::op_cost*/
+        temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
-    
+ 
 	Matrix_Difference(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
 	~Matrix_Difference() {}
@@ -185,13 +233,14 @@ public:
     
     //typedef typename MatrixL::value_type value_type;
     typedef const Matrix_Product Nested;
-    
+ 
     enum traits {
         RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime, //assuming square matrices!
         ColsAtCompileTime = MatrixL::traits::ColsAtCompileTime,
-        op_cost = RowsAtCompileTime * ColsAtCompileTime * (2 * RowsAtCompileTime - 1) + MatrixL::traits::op_cost + MatrixR::traits::op_cost
+        op_cost = RowsAtCompileTime * ColsAtCompileTime * (2 * RowsAtCompileTime - 1), /*+ MatrixL::traits::op_cost + MatrixR::traits::op_cost*/
+        temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
-    
+ 
 	Matrix_Product(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
 
 	~Matrix_Product() {}
@@ -221,6 +270,7 @@ Matrix_Product<MatrixL, MatrixR> operator*(const Matrix_Base<MatrixL>& ml, const
 	return Matrix_Product<MatrixL, MatrixR> (ml, mr);
 } 
 
+
 // Default tree optimizer that copies the expression by value
 template<typename MatXpr>
 class Tree_Optimizer {
@@ -231,6 +281,7 @@ public:
     };
     
     typedef MatXpr NMatXpr;
+    
     static MatXpr build(const MatXpr& mxpr) { return mxpr; }
 };
 
@@ -253,7 +304,7 @@ class Tree_Optimizer< Matrix_Sum<A, B> > {
 public:
     
     enum {
-        treechanges = 1 + Tree_Optimizer<A>::treechanges + Tree_Optimizer<B>::treechanges
+        treechanges = 0
     };
     
     typedef Matrix_Sum<A, B> MatXpr;
@@ -261,7 +312,10 @@ public:
     typedef typename Tree_Optimizer<B>::NMatXpr NMatB;
     typedef Matrix_Sum<NMatA, NMatB> NMatXpr;
     
-    static NMatXpr build(const MatXpr& mxpr) { return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr); }
+    static NMatXpr build(const MatXpr& mxpr) {
+        std::cout << "Tree_Optimizer< Matrix_Sum<A, B> > temp test! " << Matrix_Sum<A, B>::temp_test << std::endl;
+        return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr);
+    }
 };
 
 // catch A * B + C and builds C + A * B
@@ -270,14 +324,17 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
 public:
     
     enum {
-        treechanges = 1 + Tree_Optimizer<A>::treechanges + Tree_Optimizer<B>::treechanges + Tree_Optimizer<C>::treechanges
+        treechanges = 1
     };
     
     typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
     typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
     typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > NMatXpr;
     
-    static NMatXpr build(const MatXpr& mxpr) { return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl; }
+    static NMatXpr build(const MatXpr& mxpr) {
+        std::cout << "Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> >  temp test! " << Matrix_Product<A, B>::temp_test << " " << Matrix_Sum< Matrix_Product<A, B>, C>::temp_test << std::endl;
+        return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
+    }
   
 };
 
@@ -287,7 +344,7 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
 public:
     
     enum {
-        treechanges = 1 + Tree_Optimizer<A>::treechanges + Tree_Optimizer<B>::treechanges + Tree_Optimizer<C>::treechanges + Tree_Optimizer<D>::treechanges
+        treechanges = 1
     };
     
     typedef Matrix_Sum< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
@@ -295,55 +352,79 @@ public:
     typedef typename Tree_Optimizer<D>::NMatXpr NMatD;
     typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > NMatXpr;
 
-    static NMatXpr build(const MatXpr& mxpr) { return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr; }
+    static NMatXpr build(const MatXpr& mxpr) {
+        std::cout << "Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > temp test! " << Matrix_Product<A, B>::temp_test << " " << Matrix_Sum<C, Matrix_Product<A, B> >::temp_test << std::endl;
+        return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
+    }
 };
+
+// catch (A * B) + (C + D) and builds (C + D) + (A * B)
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, Matrix_Sum<C, D> > > {
+public:
+    
+    enum {
+        treechanges = 1
+    };
+    
+    typedef Matrix_Sum< Matrix_Product<A, B>, Matrix_Sum<C, D> > MatXpr;
+    typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
+    typedef typename Tree_Optimizer<D>::NMatXpr NMatD;
+    typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > NMatXpr;
+    
+    static NMatXpr build(const MatXpr& mxpr) {
+        std::cout << "Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, Matrix_Sum<C, D> > > temp test! " << Matrix_Product<A, B>::temp_test << " " << Matrix_Sum<C, D>::temp_test << std::endl;
+        return Tree_Optimizer<Matrix_Sum<C, D>>::build(mxpr.matrixr) + Tree_Optimizer<Matrix_Product<A, B>>::build(mxpr.matrixl);
+    }
+};
+
 
 int main(){
 
 	Dense_Matrix<2, 2> a("a"), b("b"), c("c"), d("d");
 
-    auto xpr = b * c + d + d + d;
-    
+    auto xpr = b * c + d;
+
     typedef __typeof(xpr) Xpr;
     
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
-    // std::cout << "cost " << xpr.op_cost << std::endl;
+    std::cout << "cost " << xpr.op_cost << std::endl;
 
     auto xpr1 = Tree_Optimizer<Xpr>::build(xpr);
     typedef __typeof(xpr1) Xpr1;
     std::cout << std::endl << "optimized version 1:";
     std::cout << " " << xpr1.name() << std::endl;
-    // std::cout << "cost " << xpr1.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr1>::treechanges << std::endl;
+    std::cout << "cost " << xpr1.op_cost << std::endl;
+//    std::cout << "change " << Tree_Optimizer<Xpr>::treechanges << std::endl << std::endl;
 
     auto xpr2 = Tree_Optimizer<Xpr1>::build(xpr1);
     typedef __typeof(xpr2) Xpr2;
     std::cout << std::endl << "optimized version 2:";
     std::cout << " " << xpr2.name() << std::endl;
-    // std::cout << "cost " << xpr2.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr2>::treechanges << std::endl;
-
+    std::cout << "cost " << xpr2.op_cost << std::endl;
+ //   std::cout << "change " << Tree_Optimizer<Xpr1>::treechanges << std::endl << std::endl;
+/*
     auto xpr3 = Tree_Optimizer<Xpr2>::build(xpr2);
     typedef __typeof(xpr3) Xpr3;
     std::cout << std::endl << "optimized version 3:";
     std::cout << " " << xpr3.name() << std::endl;
-    // std::cout << "cost " << xpr3.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr3>::treechanges << std::endl;
-    
+    std::cout << "cost " << xpr3.op_cost << std::endl;
+    std::cout << "change " << Tree_Optimizer<Xpr2>::treechanges << std::endl << std::endl;
+
     auto xpr4 = Tree_Optimizer<Xpr3>::build(xpr3);
     typedef __typeof(xpr4) Xpr4;
     std::cout << std::endl << "optimized version 4:";
     std::cout << " " << xpr4.name() << std::endl;
-    // std::cout << "cost " << xpr4.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr4>::treechanges << std::endl;
+    std::cout << "cost " << xpr4.op_cost << std::endl;
+    std::cout << "change " << Tree_Optimizer<Xpr3>::treechanges << std::endl << std::endl;
 
     auto xpr5 = Tree_Optimizer<Xpr4>::build(xpr4);
     typedef __typeof(xpr5) Xpr5;
     std::cout << std::endl << "optimized version 5:";
     std::cout << " " << xpr5.name() << std::endl;
-    // std::cout << "cost " << xpr5.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr5>::treechanges << std::endl;
-    
+    std::cout << "cost " << xpr5.op_cost << std::endl;
+    std::cout << "change " << Tree_Optimizer<Xpr4>::treechanges << std::endl << std::endl;
+*/
 	return 0;
 }
