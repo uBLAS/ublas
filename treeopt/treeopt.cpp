@@ -50,7 +50,7 @@ public:
 
 template< typename T >
 struct IsTemporaryHelper{
-    enum { value = !is_reference<T>::value && !is_floating_point<T>::value && !is_integral<T>::value && !is_expression<T>::value };
+    enum { value = !is_reference<T>::value && !is_floating_point<T>::value && !is_expression<T>::value };
     typedef typename SelectType<value, true_type, false_type>::Type  Type;
 };
 
@@ -384,7 +384,6 @@ public:
         rvA = is_rvalue_reference<A>::value,
         rvB = is_rvalue_reference<B>::value,
         rvC = is_rvalue_reference<C>::value,
-        testrvr = is_rvalue_reference<Matrix_Product<A, B>>::value
     };
     
     typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
@@ -500,7 +499,7 @@ int main(){
     std::cout << " " << xpr.name() << "\n";
     std::cout << "cost " << xpr.op_cost << std::endl;
 
-    auto xpr1 = Tree_Optimizer<Xpr>::build(xpr); //std::cout << "testrvr " << Tree_Optimizer<Xpr>::testrvr << " \n \n";
+    auto xpr1 = Tree_Optimizer<Xpr>::build(xpr); std::cout << " tt1 " << Tree_Optimizer<Xpr>::tt1 << " tt2 " << Tree_Optimizer<Xpr>::tt2 << " \n \n";
     typedef __typeof(xpr1) Xpr1;
     std::cout << std::endl << "optimized version 1:";
     std::cout << " " << xpr1.name() << std::endl;
