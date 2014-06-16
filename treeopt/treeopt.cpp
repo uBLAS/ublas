@@ -49,7 +49,7 @@ public:
 
 template< typename T >
 struct IsTemporaryHelper{
-    enum { value = !is_reference<T>::value && !is_floating_point<T>::value && !is_expression<T>::value };
+    enum { value = !is_reference<T>::value && !is_floating_point<T>::value && !is_integral<T>::value && !is_expression<T>::value };
     typedef typename SelectType<value, true_type, false_type>::Type  Type;
 };
 
@@ -58,6 +58,20 @@ struct is_temporary : public IsTemporaryHelper<T>::Type {
 public:
     enum { value = IsTemporaryHelper<T>::value };
     typedef typename IsTemporaryHelper<T>::Type  Type;
+};
+
+template< typename T >
+struct RequiresEvaluationHelper {
+    enum { value = !is_reference<typename T::Nested>::value };
+    typedef typename SelectType<value, true_type, false_type>::Type  Type;
+};
+
+template< typename T >
+struct requires_evaluation : public RequiresEvaluationHelper<T>::Type
+{
+public:
+    enum { value = RequiresEvaluationHelper<T>::value };
+    typedef typename RequiresEvaluationHelper<T>::Type  Type;
 };
 
 
@@ -100,9 +114,10 @@ public:
     typedef const Dense_Matrix& Nested;
     
     enum traits {
-         RowsAtCompileTime = rows,
-         ColsAtCompileTime = cols,
-         op_cost = 0
+        RowsAtCompileTime = rows,
+        ColsAtCompileTime = cols,
+        op_cost = 0,
+        temp_test = false
     };
     
     Dense_Matrix(const std::string& name) : m_name(name) {
@@ -161,6 +176,9 @@ private:
     storage_type data;
     
 };
+
+typedef Dense_Matrix<4, 1> Vector4d;
+typedef Dense_Matrix<4, 4> Matrix4d;
 
 //Represents the matrix sum.
 template <typename MatrixL, typename MatrixR >
@@ -313,8 +331,26 @@ public:
     typedef Matrix_Sum<NMatA, NMatB> NMatXpr;
     
     static NMatXpr build(const MatXpr& mxpr) {
-        std::cout << "Tree_Optimizer< Matrix_Sum<A, B> > temp test! " << Matrix_Sum<A, B>::temp_test << std::endl;
         return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr);
+    }
+};
+
+// Needed to forward the optimizer to the children
+template<typename A, typename B>
+class Tree_Optimizer< Matrix_Product<A, B> > {
+public:
+    
+    enum {
+        treechanges = 0
+    };
+    
+    typedef Matrix_Product<A, B> MatXpr;
+    typedef typename Tree_Optimizer<A>::NMatXpr NMatA;
+    typedef typename Tree_Optimizer<B>::NMatXpr NMatB;
+    typedef Matrix_Product<NMatA, NMatB> NMatXpr;
+    
+    static NMatXpr build(const MatXpr& mxpr) {
+        return Tree_Optimizer<A>::build(mxpr.matrixl) * Tree_Optimizer<B>::build(mxpr.matrixr);
     }
 };
 
@@ -332,7 +368,6 @@ public:
     typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > NMatXpr;
     
     static NMatXpr build(const MatXpr& mxpr) {
-        std::cout << "Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> >  temp test! " << Matrix_Product<A, B>::temp_test << " " << Matrix_Sum< Matrix_Product<A, B>, C>::temp_test << std::endl;
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
     }
   
@@ -353,7 +388,6 @@ public:
     typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > NMatXpr;
 
     static NMatXpr build(const MatXpr& mxpr) {
-        std::cout << "Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > temp test! " << Matrix_Product<A, B>::temp_test << " " << Matrix_Sum<C, Matrix_Product<A, B> >::temp_test << std::endl;
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
     }
 };
@@ -373,17 +407,45 @@ public:
     typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > NMatXpr;
     
     static NMatXpr build(const MatXpr& mxpr) {
-        std::cout << "Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, Matrix_Sum<C, D> > > temp test! " << Matrix_Product<A, B>::temp_test << " " << Matrix_Sum<C, D>::temp_test << std::endl;
         return Tree_Optimizer<Matrix_Sum<C, D>>::build(mxpr.matrixr) + Tree_Optimizer<Matrix_Product<A, B>>::build(mxpr.matrixl);
     }
+};
+
+// catch (A * B) * C and builds
+// A * (B * C) if C is a vector
+// (A * B) * C if C is a matrix
+template<typename A, typename B, typename C>
+class Tree_Optimizer< Matrix_Product< Matrix_Product<A, B>, C> > { //typename std::enable_if<std::is_integral<T>::value,bool>::type
+public:
+    
+    enum {
+        treechanges = 1
+    };
+    
+    typedef Matrix_Product< Matrix_Product<A, B>, C> MatXpr;
+    typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
+    typedef Matrix_Product< A, Matrix_Product<B, C> > NMatXpr;
+    typedef Matrix_Product<B, C> NPMatXpr;
+    
+    template <typename c = C> //only way to get enable_if to work with member functions (ugh) return type is Matrix_Product< A, Matrix_Product<B, C> >
+    static typename boost::enable_if<boost::is_same<c, Vector4d>, NMatXpr>::type build(const MatXpr& mxpr) {
+        return Tree_Optimizer<A>::build(mxpr.matrixl.matrixl) * Tree_Optimizer<NPMatXpr>::build(NPMatXpr(mxpr.matrixl.matrixr, mxpr.matrixr));
+    }
+    
+    template <typename c = C> //only way to get enable_if to work with member functions (ugh) return type is Matrix_Product< Matrix_Product<A, B>, C>
+    static typename boost::enable_if<boost::is_same<c, Matrix4d>, MatXpr>::type build(const MatXpr& mxpr) {
+        return Tree_Optimizer<Matrix_Product<A, B>>::build(mxpr.matrixl) * Tree_Optimizer<C>::build(mxpr.matrixr);
+    }
+    
 };
 
 
 int main(){
 
-	Dense_Matrix<2, 2> a("a"), b("b"), c("c"), d("d");
-
-    auto xpr = b * c + d;
+	Matrix4d A("A"), B("B"), C("C"), D("D");
+    Vector4d a("a"), b("b"), c("c"), d("d");
+    
+    auto xpr = A * B * c;
 
     typedef __typeof(xpr) Xpr;
     
@@ -412,19 +474,6 @@ int main(){
     std::cout << "cost " << xpr3.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr2>::treechanges << std::endl << std::endl;
 
-    auto xpr4 = Tree_Optimizer<Xpr3>::build(xpr3);
-    typedef __typeof(xpr4) Xpr4;
-    std::cout << std::endl << "optimized version 4:";
-    std::cout << " " << xpr4.name() << std::endl;
-    std::cout << "cost " << xpr4.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr3>::treechanges << std::endl << std::endl;
-
-    auto xpr5 = Tree_Optimizer<Xpr4>::build(xpr4);
-    typedef __typeof(xpr5) Xpr5;
-    std::cout << std::endl << "optimized version 5:";
-    std::cout << " " << xpr5.name() << std::endl;
-    std::cout << "cost " << xpr5.op_cost << std::endl;
-    std::cout << "change " << Tree_Optimizer<Xpr4>::treechanges << std::endl << std::endl;
 */
 	return 0;
 }
