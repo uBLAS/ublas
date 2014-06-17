@@ -7,6 +7,7 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <cstdlib>
 #include <ctime>
 #include <vector>
+#include <utility>
 #include <boost/type_traits.hpp>
 
 using namespace boost;
@@ -113,43 +114,43 @@ public:
         op_cost = 0,
     };
     
-    Dense_Matrix(const std::string& name) : m_name(name) {
+    Dense_Matrix(const std::string& name) : m_name(name), _rows(rows), _cols(cols) {
         std::vector<value_type> row(cols);
-        data.resize(rows, row);
+        _data.resize(rows, row);
         rand_init();
         std::cout << "- Create matrix " << m_name << std::endl;
     }
 
-    template <typename MatXpr>
-    Dense_Matrix(const Matrix_Base<MatXpr>& mexpr) : m_name(mexpr.m_name) { // Construct from a matrix_expression
+    Dense_Matrix(const Dense_Matrix<rows, cols>& mexpr) : _rows(rows), _cols(cols) { //sizes must be compatible
         for(size_t i = 0; i < mexpr.size1(); ++i) {
             for(size_t j = 0; j < mexpr.size2(); ++j){
-                data[i][j] = mexpr(i,j);
+                _data[i][j] = mexpr(i,j);
             }
         }
+        
     }
 
     ~Dense_Matrix() {}
     
     inline std::string name() const { return m_name; } //just the name
     
-    constexpr inline size_t size1() const { return rows; }
+    constexpr inline size_t size1() const { return _rows; }
     
-    constexpr inline size_t size2() const { return cols; }
+    constexpr inline size_t size2() const { return _cols; }
     
     inline const value_type& operator()(size_t i, size_t j) const {
-        return data[i][j];
+        return _data[i][j];
     }
     
     inline value_type& operator()(size_t i, size_t j) {
-        return data[i][j];
+        return _data[i][j];
     }
     
     template <typename T>
-    Dense_Matrix& operator=(const T& right){
+    Dense_Matrix& operator=(const T&& right){
         for(size_t i = 0; i < size1(); ++i){
-            for(size_t j = 0; j < size1(); ++j){
-                data[i][j] = right(i, j);
+            for(size_t j = 0; j < size2(); ++j){
+                _data[i][j] = right(i, j);
             }
         }
         return *this;
@@ -159,14 +160,15 @@ public:
         srand(time(NULL)); // randomly generate the matrices
         for(size_t i = 0; i < size1(); ++i){
             for(size_t j = 0; j < size2(); ++j){
-                data[i][j] = rand() % 100;
+                _data[i][j] = rand() % 100;
             }
         }
     } 
 
 private:
     std::string m_name;
-    storage_type data;
+    size_t _rows, _cols;
+    storage_type _data;
     
 };
 
@@ -191,7 +193,7 @@ public:
         temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
  
-    Matrix_Sum(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
+    Matrix_Sum(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr), m_name(name()) {}
     
     ~Matrix_Sum() {}
     
@@ -203,6 +205,9 @@ public:
     
     typename MatrixL::Nested matrixl;
     typename MatrixR::Nested matrixr;
+    
+private:
+    std::string m_name;
     
 };
 
@@ -462,8 +467,8 @@ int main(){
     Vector4d a("a"), b("b"), c("c"), d("d");
     std::cout << "\n";
     
-    auto xpr = D + A * B * c + D;
-    
+    auto xpr = A * B + C;
+   
     typedef __typeof(xpr) Xpr;
     
     std::cout << "init version:";
@@ -476,7 +481,6 @@ int main(){
     std::cout << " " << xpr1.name() << std::endl;
     // std::cout << "cost " << xpr1.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr>::treechanges << std::endl << std::endl;
-
 
     auto xpr2 = Tree_Optimizer<Xpr1>::build(xpr1);
     typedef __typeof(xpr2) Xpr2;
