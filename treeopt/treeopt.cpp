@@ -14,6 +14,47 @@ using namespace boost;
 
 typedef double value_type; // simplifying things with the templates
 
+// forward declarations
+template <typename MatXpr>
+class Matrix_Base;
+
+template <size_t rows, size_t cols>
+class Dense_Matrix;
+
+template <typename MatrixL, typename MatrixR >
+class Matrix_Sum;
+
+template <typename MatrixL, typename MatrixR >
+class Matrix_Difference;
+
+template <typename MatrixL, typename MatrixR >
+class Matrix_Product;
+
+template<typename MatXpr>
+class Tree_Optimizer;
+
+template<size_t rows, size_t cols>
+class Tree_Optimizer< Dense_Matrix<rows, cols> >;
+
+template<typename A, typename B>
+class Tree_Optimizer< Matrix_Sum<A, B> >;
+
+template<typename A, typename B>
+class Tree_Optimizer< Matrix_Product<A, B> >;
+
+template<typename A, typename B, typename C>
+class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> >;
+
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> >;
+
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> >;
+
+template<typename A, typename B, typename C>
+class Tree_Optimizer< Matrix_Product< Matrix_Product<A, B>, C> >;
+// end foward declarations
+
 // this is for the type_traits
 class Base_Base { };
 
@@ -76,8 +117,6 @@ public:
     typedef typename RequiresEvaluationHelper<T>::Type  Type;
 };
 
-
-//Base class.
 template <typename MatXpr>
 class Matrix_Base : public Base_Base {
   
@@ -148,11 +187,23 @@ public:
     
     template <typename T>
     Dense_Matrix& operator=(const T&& right){
+        
+        /* // This seems like a possible option
+        auto nright = Tree_Optimizer< decltype(right) >::build(right);
+        
+        for(size_t i = 0; i < size1(); ++i){
+            for(size_t j = 0; j < size2(); ++j){
+                _data[i][j] = nright(i, j);
+            }
+        }
+        */
+        
         for(size_t i = 0; i < size1(); ++i){
             for(size_t j = 0; j < size2(); ++j){
                 _data[i][j] = right(i, j);
             }
         }
+        
         return *this;
     }
     
@@ -460,41 +511,49 @@ public:
  
 };
 
-
 int main(){
 
 	Matrix4d A("A"), B("B"), C("C"), D("D");
     Vector4d a("a"), b("b"), c("c"), d("d");
-    std::cout << "\n";
-    
+    std::cout << "\n"; C = A * B + C + D;
+ 
     auto xpr = A * B + C;
-   
-    typedef __typeof(xpr) Xpr;
+    
+    typedef decltype(xpr) Xpr;
     
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
     std::cout << "cost " << xpr.op_cost << std::endl;
-
+  
+  /*
+    bool test = false;
+    do{
+        auto xpr1 = Tree_Optimizer<Xpr>::build(xpr);
+        typedef decltype(xpr1) Xpr;
+        if(!Tree_Optimizer<Xpr>::treechanges) test = true;
+    } while(!test);
+   */
+    
     auto xpr1 = Tree_Optimizer<Xpr>::build(xpr);
-    typedef __typeof(xpr1) Xpr1;
+    typedef decltype(xpr1) Xpr1;
     std::cout << std::endl << "optimized version 1:";
     std::cout << " " << xpr1.name() << std::endl;
     // std::cout << "cost " << xpr1.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr>::treechanges << std::endl << std::endl;
 
     auto xpr2 = Tree_Optimizer<Xpr1>::build(xpr1);
-    typedef __typeof(xpr2) Xpr2;
+    typedef decltype(xpr2) Xpr2;
     std::cout << std::endl << "optimized version 2:";
     std::cout << " " << xpr2.name() << std::endl;
     // std::cout << "cost " << xpr2.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr1>::treechanges << std::endl << std::endl;
 
     auto xpr3 = Tree_Optimizer<Xpr2>::build(xpr2);
-    typedef __typeof(xpr3) Xpr3;
+    typedef decltype(xpr3) Xpr3;
     std::cout << std::endl << "optimized version 3:";
     std::cout << " " << xpr3.name() << std::endl;
     // std::cout << "cost " << xpr3.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr2>::treechanges << std::endl << std::endl;
-
+   
 	return 0;
 }
