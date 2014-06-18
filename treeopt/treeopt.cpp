@@ -186,7 +186,7 @@ public:
     }
     
     template <typename T>
-    Dense_Matrix& operator=(const T&& right){
+    Dense_Matrix& operator=(const T& right){
         
         /* // This seems like a possible option
         auto nright = Tree_Optimizer< decltype(right) >::build(right);
@@ -241,7 +241,6 @@ public:
         RowsAtCompileTimeR = MatrixR::traits::RowsAtCompileTimeR,
         ColsAtCompileTimeR = MatrixR::traits::ColsAtCompileTimeR,
         op_cost = RowsAtCompileTimeL * ColsAtCompileTimeL, //sizes must be compatible
-        temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
  
     Matrix_Sum(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr), m_name(name()) {}
@@ -278,7 +277,6 @@ public:
         RowsAtCompileTimeR = MatrixR::traits::RowsAtCompileTimeR,
         ColsAtCompileTimeR = MatrixR::traits::ColsAtCompileTimeR,
         op_cost = RowsAtCompileTimeL * ColsAtCompileTimeL, //sizes must be compatible
-        temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
  
 	Matrix_Difference(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -311,7 +309,6 @@ public:
         RowsAtCompileTimeR = MatrixR::traits::RowsAtCompileTimeR,
         ColsAtCompileTimeR = MatrixR::traits::ColsAtCompileTimeR,
         op_cost = RowsAtCompileTimeL * ColsAtCompileTimeR * (2 * ColsAtCompileTimeL - 1),
-        temp_test = !is_temporary<MatrixL>::value && !is_temporary<MatrixR>::value
     };
  
 	Matrix_Product(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -357,8 +354,7 @@ Matrix_Difference<MatrixL, MatrixR> operator-(const Matrix_Base<MatrixL>& ml, co
 template <typename MatrixL, typename MatrixR>
 Matrix_Product<MatrixL, MatrixR> operator*(const Matrix_Base<MatrixL>& ml, const Matrix_Base<MatrixR>& mr){
 	return Matrix_Product<MatrixL, MatrixR> (ml, mr);
-} 
-
+}
 
 // Default tree optimizer that copies the expression by value
 template<typename MatXpr>
@@ -371,7 +367,9 @@ public:
     
     typedef MatXpr NMatXpr;
     
-    static MatXpr build(const MatXpr& mxpr) { return mxpr; }
+    static NMatXpr build(const MatXpr& mxpr) {
+        return mxpr;
+    }
 };
 
 // Tree optimizer for Dense_Matrix that copies by reference
@@ -431,7 +429,7 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
 public:
     
     enum {
-        treechanges = 1 || Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges || Tree_Optimizer<C>::treechanges,
+        treechanges = 1
     };
     
     typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
@@ -450,7 +448,7 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
 public:
     
     enum {
-        treechanges = 1 || Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges || Tree_Optimizer<C>::treechanges || Tree_Optimizer<D>::treechanges,
+        treechanges = 1
     };
     
     typedef Matrix_Sum< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
@@ -463,13 +461,13 @@ public:
     }
 };
 
-// catch (A * B) + (C + D) and builds (C + D) + (A * B)
+// catch (A * B) + C + D and builds (C + D) + (A * B)
 template<typename A, typename B, typename C, typename D>
 class Tree_Optimizer< Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> > {
 public:
     
     enum {
-        treechanges = 1 || Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges || Tree_Optimizer<C>::treechanges || Tree_Optimizer<D>::treechanges,
+        treechanges = 1 //|| Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges || Tree_Optimizer<C>::treechanges || Tree_Optimizer<D>::treechanges,
     };
     
     typedef Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> MatXpr;
@@ -481,6 +479,25 @@ public:
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixr) + Tree_Optimizer<D>::build(mxpr.matrixr) + Tree_Optimizer<Matrix_Product<A, B>>::build(mxpr.matrixl.matrixl);
     }
 };
+
+// catch A * B + C * D and builds A * B + C * D
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> > > {
+public:
+    
+    enum {
+        treechanges = 0
+    };
+    
+    typedef Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> > MatXpr;
+    typedef Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> > NMatXpr;
+    
+    static NMatXpr build(const MatXpr& mxpr) {
+        return mxpr;
+    }
+    
+};
+
 
 // catch (A * B) * C and builds
 // A * (B * C) if C is a vector
@@ -511,28 +528,20 @@ public:
  
 };
 
+
 int main(){
 
 	Matrix4d A("A"), B("B"), C("C"), D("D");
     Vector4d a("a"), b("b"), c("c"), d("d");
-    std::cout << "\n"; C = A * B + C + D;
+    std::cout << "\n";
  
-    auto xpr = A * B + C;
+    auto xpr = A * B + C + D;
     
     typedef decltype(xpr) Xpr;
-    
+   
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
-    std::cout << "cost " << xpr.op_cost << std::endl;
-  
-  /*
-    bool test = false;
-    do{
-        auto xpr1 = Tree_Optimizer<Xpr>::build(xpr);
-        typedef decltype(xpr1) Xpr;
-        if(!Tree_Optimizer<Xpr>::treechanges) test = true;
-    } while(!test);
-   */
+    std::cout << "cost " << xpr.op_cost << "\n";
     
     auto xpr1 = Tree_Optimizer<Xpr>::build(xpr);
     typedef decltype(xpr1) Xpr1;
@@ -554,6 +563,6 @@ int main(){
     std::cout << " " << xpr3.name() << std::endl;
     // std::cout << "cost " << xpr3.op_cost << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr2>::treechanges << std::endl << std::endl;
-   
+ 
 	return 0;
 }
