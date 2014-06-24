@@ -20,6 +20,10 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <boost/mpl/replace_if.hpp>
 #include <boost/mpl/greater.hpp>
 #include <boost/mpl/if.hpp>
+#include <boost/mpl/while.hpp>
+#include <boost/mpl/times.hpp>
+#include <boost/mpl/divides.hpp>
+
 /*#include "align.hpp"
 #include "alignment_trait.hpp"
 #include "aligned_array.hpp"*/
@@ -394,7 +398,6 @@ class Tree_Optimizer {
 public:
     
     enum {
-        cost = 0,
         treechanges = 0
     };
     
@@ -411,7 +414,6 @@ class Tree_Optimizer< Dense_Matrix<rows, cols> > {
 public:
     
     enum {
-        cost = 0,
         treechanges = 0
     };
     
@@ -425,7 +427,6 @@ class Tree_Optimizer< Matrix_Sum<A, B> > {
 public:
     
     enum {
-        cost = 0,
         treechanges = Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges,
     };
     
@@ -445,7 +446,6 @@ class Tree_Optimizer< Matrix_Product<A, B> > {
 public:
     
     enum {
-        cost = 0,
         treechanges = Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges,
     };
     
@@ -466,7 +466,6 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
 public:
     
     enum {
-        cost = 0,
         treechanges = 1
     };
     
@@ -486,8 +485,7 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
 public:
     
     enum {
-        cost = 0,
-        treechanges = 1
+        treechanges = 1,
     };
     
     typedef Matrix_Sum< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
@@ -500,14 +498,14 @@ public:
     }
 };
 
+
 // catch (A * B) + C + D and builds (C + D) + (A * B)
 template<typename A, typename B, typename C, typename D>
 class Tree_Optimizer< Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> > {
 public:
     
     enum {
-        cost = 0,
-        treechanges = 1 //|| Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges || Tree_Optimizer<C>::treechanges || Tree_Optimizer<D>::treechanges,
+        treechanges = 1,
     };
     
     typedef Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> MatXpr;
@@ -526,7 +524,6 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> > >
 public:
     
     enum {
-        cost = 0,
         treechanges = 0
     };
     
@@ -549,14 +546,12 @@ class Tree_Optimizer< Matrix_Product< Matrix_Product<A, B>, C> > {
 public:
     
     enum {
-        cost = 0,
-        treechanges = 1 || Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges || Tree_Optimizer<C>::treechanges,
+        treechanges = 1,
     };
     
     typedef Matrix_Product< Matrix_Product<A, B>, C> MatXpr;
     typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
     typedef Matrix_Product< A, Matrix_Product<B, C> > NMatXpr;
-    typedef Matrix_Product<B, C> NPMatXpr;
 
     template <typename c = C> //only way to get enable_if to work with member functions (ugh) return type is Matrix_Product< A, Matrix_Product<B, C> >
     static typename boost::enable_if<boost::is_same<c, Vector4d>, NMatXpr>::type build(const MatXpr& mxpr) {
@@ -570,43 +565,16 @@ public:
  
 };
 
-/*
-template<size_t, typename> struct iota_n;
-
-template<typename Value>
-struct iota_n<0, Value> : boost::mpl::vector<> {};
-
-template<size_t N, typename Value>
-struct iota_n : boost::mpl::push_front< typename iota_n< N - 1,
-typename boost::mpl::next<Value>::type >::type, Value > {};
-
-typedef iota_n< 10, boost::mpl::int_<10> >::type sequence;
-
-struct print
-{
-    template<typename T>
-    void operator()(boost::mpl::identity<T>)
-    {
-        std::cout << T::value << "\n";
+struct Optimizer {
+    
+    template <typename MatExpr>
+    auto operator() (MatExpr& matexpr) -> decltype(Tree_Optimizer<MatExpr>::build(matexpr)) {
+        return Tree_Optimizer<MatExpr>::build(matexpr);
     }
-};
-*/
-
-/*
-template <typename MatExpr>
-class Opt {
-    MatExpr matexpr;
-public:
-    Opt(const MatExpr& m) : matexpr(m) {}
     
-    typedef const MatExpr& Xpr1;
-    typedef decltype(Tree_Optimizer<Xpr1>::build(matexpr)) Xpr2;
-    
-}; */
+} Opt;
 
 int main(){
-    
-   // boost::mpl::for_each<sequence, boost::mpl::make_identity<> > (print());
 
 	Matrix4d A("A"), B("B"), C("C"), D("D");
     Vector4d a("a"), b("b"), c("c"), d("d");
@@ -615,73 +583,36 @@ int main(){
     auto xpr = A * B + C;
     
     typedef decltype(xpr) Xpr;
-   
+
+    typedef mpl::if_< mpl::less< mpl::size_t< decltype(Tree_Optimizer<Xpr>::build(xpr))::Op_Cost_Total >, mpl::size_t< Xpr::Op_Cost_Total > >::type, decltype(Tree_Optimizer<Xpr>::build(xpr)), Xpr>::type type;
+    type xpr1 = Opt(xpr);
+    std::cout << "cost smaller? " << Xpr::Op_Cost_Total << " " << type::Op_Cost_Total << std::endl;
+
+    /*
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
     std::cout << "cost " << xpr.Op_Cost_Total << "\n";
     
-    
-    /*
-    typedef mpl::vector<> expressions;
-    typedef mpl::push_back<expressions, decltype(Tree_Optimizer<Xpr>::build(xpr))>::type types;
-    std::cout << mpl::size<types>::value << std::endl;
-    */
-    /*
-    typedef mpl::vector<> expressions;
-    typedef mpl::push_back<expressions, decltype(xpr)>::type types;
-    typedef mpl::replace_if< types,
-    mpl::if_< mpl::greater<
-    mpl::size_t< Tree_Optimizer<Xpr>::cost >,
-    mpl::size_t< Tree_Optimizer< decltype(Tree_Optimizer<Xpr>::build(xpr)) >::cost >,
-    >::type,
-    Xpr, decltype(Tree_Optimizer<Xpr>::build(xpr))
-    >::type >::type result;
-     */
-    
-    auto xpr1 = Tree_Optimizer<Xpr>::build(xpr);
+    Tree_Optimizer<Xpr>::NMatXpr xpr1 = Tree_Optimizer<Xpr>::build(xpr);
     typedef decltype(xpr1) Xpr1;
     std::cout << std::endl << "optimized version 1:";
     std::cout << " " << xpr1.name() << std::endl;
     std::cout << "cost " << xpr1.Op_Cost_Total << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr>::treechanges << std::endl << std::endl;
-    
-    
-    /*
-    auto xpr2 = Tree_Optimizer<Xpr1>::build(xpr1);
+
+    Tree_Optimizer<Xpr1>::NMatXpr xpr2 = Tree_Optimizer<Xpr1>::build(xpr1);
     typedef decltype(xpr2) Xpr2;
     std::cout << std::endl << "optimized version 2:";
     std::cout << " " << xpr2.name() << std::endl;
     std::cout << "cost " << xpr2.Op_Cost_Total << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr1>::treechanges << std::endl << std::endl;
 
-    auto xpr3 = Tree_Optimizer<Xpr2>::build(xpr2);
+    Tree_Optimizer<Xpr2>::NMatXpr xpr3 = Tree_Optimizer<Xpr2>::build(xpr2);
     typedef decltype(xpr3) Xpr3;
     std::cout << std::endl << "optimized version 3:";
     std::cout << " " << xpr3.name() << std::endl;
     std::cout << "cost " << xpr3.Op_Cost_Total << std::endl;
     std::cout << "change " << Tree_Optimizer<Xpr2>::treechanges << std::endl << std::endl;
- */
-    /*
-    typedef mpl::vector<> expressions;
-    typedef mpl::push_back<expressions, decltype(xpr)>::type types;
-    std::cout << mpl::size<types>::value << std::endl << std::endl;
-    
-    typedef mpl::range_c<int,0,10> range10;
-    std::cout << mpl::size<range10>::value << std::endl;
-    
-    typedef mpl::less<mpl::size_t<Tree_Optimizer<Xpr>::treechanges>,mpl::size_t<Tree_Optimizer<Xpr1>::treechanges>> expr;
-    
-    typedef mpl::lambda<expr>::type func;
-     */
-    /*
-    typedef mpl::if_<expr,int,double>::type t1;
-    
-    t1 x = 1.4321;
-    std::cout << x << std::endl;
-    */
-    /*
-    typedef mpl::if_<expr,decltype(xpr),decltype(Tree_Optimizer<Xpr>::build(xpr))>::type t1;
-    */
-    
+*/
 	return 0;
 }
