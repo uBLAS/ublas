@@ -23,6 +23,7 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <boost/mpl/while.hpp>
 #include <boost/mpl/times.hpp>
 #include <boost/mpl/divides.hpp>
+#include <boost/mpl/front.hpp>
 
 /*#include "align.hpp"
 #include "alignment_trait.hpp"
@@ -565,6 +566,97 @@ public:
  
 };
 
+/*
+template <typename totalsize, typename poolsize>
+struct curry {
+    struct if_ops {
+        
+        template <typename maxelement>
+        struct if_ {
+            typedef mpl::times< totalsize , maxelement > part0;
+            typedef mpl::times< part0 , mpl::int_< 3 > > part1;
+            typedef typename mpl::greater< part1, poolsize>::type type;
+        };
+        
+        template <typename maxelement>
+        struct then_ : mpl::divides < maxelement, mpl::int_< 2 > > { };
+        
+    };
+    
+    template <typename maxelement>
+    struct loop : mpl::while_ < maxelement, if_ops> { };
+    
+};
+
+void test(void) {
+    typedef mpl::int_< 144 > totalsize_t;
+    typedef mpl::int_< 140000 > poolsize_t;
+    typedef mpl::int_< 1024 > maxelement_t;
+    typedef curry<totalsize_t, poolsize_t>::loop<maxelement_t>::type actual;
+    int const totalsize_v = totalsize_t::value;
+    int const poolsize_v = poolsize_t::value;
+    int maxelement_v = maxelement_t::value;
+    while( totalsize_v * maxelement_v * 3 > poolsize_v )
+        maxelement_v >>= 1;
+    
+    std::cout<<"actual result= " << actual::value << "\n";
+    std::cout<<"expected result= " << maxelement_v << "\n";
+}
+*/
+/*
+template
+< class State //nullary metafunction returning current state.
+, class IfOps //contains nested unary metafunctions, if_, then_.
+>
+struct while_
+: mpl::eval_if < typename IfOps::template if_<typename State::type>::type , while_ < typename IfOps::template then_<typename State::type> , IfOps >, State >
+{ };
+*/
+/*
+template<
+typename C
+, typename F1
+, typename F2
+>
+struct eval_if
+{
+    typedef unspecified type;
+};
+*/
+/*
+template
+< class State //nullary metafunction returning current state.
+, class IfOps //contains nested unary metafunctions, if_, then_.
+>
+struct while_
+: mpl::eval_if < typename IfOps::if_::type, while_ < typename IfOps::if_, IfOps >, typename IfOps::then_::type >
+{ };
+
+template <typename MatXpr>
+struct Op {
+    
+    struct if_ops {
+        
+        typedef typename  NMatXpr;
+        
+        struct if_ {
+            typedef mpl::bool_< Tree_Optimizer<typename mpl::end<types>::type>::treechanges > treechange;
+            typedef typename Tree_Optimizer<typename mpl::end<types>::type>::NMatXpr NMatXpr;
+            typedef typename is_same<treechange, true_type>::type type;
+        };
+        
+        struct then_ {
+            typedef typename if_::NMatXpr type;
+        };
+        
+    };
+    
+    struct loop : while_ < typename is_same< mpl::bool_< Tree_Optimizer<MatXpr>::treechanges >, true_type>::type, if_ops> {
+
+    };
+    
+}; */
+
 struct Optimizer {
     
     template <typename MatExpr>
@@ -572,7 +664,7 @@ struct Optimizer {
         return Tree_Optimizer<MatExpr>::build(matexpr);
     }
     
-} Opt;
+};
 
 int main(){
 
@@ -582,12 +674,37 @@ int main(){
  
     auto xpr = A * B + C;
     
+    std::cout << "init version:";
+    std::cout << " " << xpr.name() << "\n";
+    std::cout << "cost " << xpr.Op_Cost_Total << "\n";
+    
     typedef decltype(xpr) Xpr;
-
+/*
     typedef mpl::if_< mpl::less< mpl::size_t< decltype(Tree_Optimizer<Xpr>::build(xpr))::Op_Cost_Total >, mpl::size_t< Xpr::Op_Cost_Total > >::type, decltype(Tree_Optimizer<Xpr>::build(xpr)), Xpr>::type type;
     type xpr1 = Opt(xpr);
     std::cout << "cost smaller? " << Xpr::Op_Cost_Total << " " << type::Op_Cost_Total << std::endl;
-
+*/
+    
+    typedef mpl::vector< decltype(xpr) > types;
+    typedef mpl::front<types>::type t;
+    typedef mpl::push_front<types, decltype(Tree_Optimizer<t>::build(xpr)) >::type types1;
+    typedef mpl::front<types1>::type t1;
+    typedef mpl::push_front<types1, decltype(Tree_Optimizer<t1>::build( Tree_Optimizer<t>::build(xpr) ) ) >::type types2;
+    typedef mpl::front<types2>::type t2;
+    typedef mpl::push_front<types2, decltype( Tree_Optimizer<t2>::build( Tree_Optimizer<t1>::build( Tree_Optimizer<t>::build(xpr) ) ) ) >::type types3;
+    typedef mpl::front<types3>::type t3;
+    typedef mpl::push_front<types3, decltype(Tree_Optimizer<t3>::build( Tree_Optimizer<t2>::build( Tree_Optimizer<t1>::build( Tree_Optimizer<t>::build(xpr) ) ) )) >::type types4;
+    typedef mpl::front<types4>::type t4;
+    std::cout << mpl::size<types4>::value << std::endl << std::endl;
+    
+    t1 xpr1 = Tree_Optimizer<t>::build(xpr);
+    t2 xpr2 = Tree_Optimizer<t1>::build(xpr1);
+    t3 xpr3 = Tree_Optimizer<t2>::build(xpr2);
+    t4 xpr4 = Tree_Optimizer<t3>::build(xpr3);
+    std::cout << std::endl << "optimized version 1:";
+    std::cout << " " << xpr4.name() << "\n";
+    std::cout << "cost " << xpr4.Op_Cost_Total << "\n";
+    
     /*
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
