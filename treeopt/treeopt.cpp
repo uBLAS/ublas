@@ -645,6 +645,7 @@ struct eval_if
 };
 */
 
+/*
 Matrix4d A("A"), B("B"), C("C"), D("D");
 Vector4d a("a"), b("b"), c("c"), d("d");
 auto xpr = A * B + C;
@@ -660,6 +661,18 @@ mpl::push_back< typename tree_types< N - 1, typename mpl::next<i>::type >::type,
 typename Tree_Optimizer< typename mpl::front< typename tree_types< N - 1, typename mpl::next<i>::type >::type>::type >::NMatXpr > {};
 
 typedef tree_types< 2, mpl::size_t<0> >::type sequence;
+*/
+
+template<size_t, typename, typename> struct tree_types;
+
+template<typename i, typename MatXpr>
+struct tree_types<0, i, MatXpr> : mpl::vector< MatXpr > {};
+
+template<size_t N, typename i, typename MatXpr>
+struct tree_types :
+mpl::push_back< typename tree_types< N - 1, typename mpl::next<i>::type, MatXpr >::type,
+typename Tree_Optimizer< typename mpl::front< typename tree_types< N - 1, typename mpl::next<i>::type, MatXpr >::type>::type >::NMatXpr > {};
+
 
 struct print {
     template<typename T>
@@ -702,19 +715,20 @@ struct Op {
 
 int main(){
     
-   // boost::mpl::for_each<sequence, boost::mpl::make_identity<> > (print());
-    std::cout << mpl::size<sequence>::value << std::endl << std::endl;
-    
-
-	//Matrix4d A("A"), B("B"), C("C"), D("D");
-   // Vector4d a("a"), b("b"), c("c"), d("d");
+	Matrix4d A("A"), B("B"), C("C"), D("D");
+    Vector4d a("a"), b("b"), c("c"), d("d");
     std::cout << "\n";
  
-    // auto xpr = A * B + C;
+    auto xpr = A * B + C;
     
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
     std::cout << "cost " << xpr.Op_Cost_Total << "\n";
+    
+    typedef tree_types< 2, mpl::size_t<0>, decltype(xpr) >::type sequence;
+    
+    boost::mpl::for_each<sequence, boost::mpl::make_identity<> > (print());
+    std::cout << mpl::size<sequence>::value << std::endl << std::endl;
     
     typedef decltype(xpr) Xpr;
 /*
