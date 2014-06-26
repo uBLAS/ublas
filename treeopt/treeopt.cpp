@@ -4,6 +4,7 @@ Based on code gathered from myself, ublas, blaze, eigen.
 */
 
 #include <iostream>
+#include <typeinfo>
 #include <cstdlib>
 #include <ctime>
 #include <vector>
@@ -477,7 +478,11 @@ public:
     static NMatXpr build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
     }
-  
+    /*
+    static NMatXpr build() {
+        return NMatXpr ();
+    }
+     */
 };
 
 // catch C + A * B + D and builds (C + D) + (A * B)
@@ -497,6 +502,11 @@ public:
     static NMatXpr build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
     }
+    /*
+    static NMatXpr build() {
+        return NMatXpr ();
+    }
+    */
 };
 
 
@@ -567,6 +577,17 @@ public:
 };
 
 /*
+ struct Optimizer {
+ 
+ template <typename MatExpr>
+ auto operator() (MatExpr& matexpr) -> decltype(Tree_Optimizer<MatExpr>::build(matexpr)) {
+ return Tree_Optimizer<MatExpr>::build(matexpr);
+ }
+ 
+ };
+ */
+
+/*
 template <typename totalsize, typename poolsize>
 struct curry {
     struct if_ops {
@@ -623,6 +644,30 @@ struct eval_if
     typedef unspecified type;
 };
 */
+
+Matrix4d A("A"), B("B"), C("C"), D("D");
+Vector4d a("a"), b("b"), c("c"), d("d");
+auto xpr = A * B + C;
+
+template<size_t, typename> struct tree_types;
+
+template<typename i>
+struct tree_types<0, i> : mpl::vector< decltype(xpr) > {};
+
+template<size_t N, typename i>
+struct tree_types :
+mpl::push_back< typename tree_types< N - 1, typename mpl::next<i>::type >::type,
+typename Tree_Optimizer< typename mpl::front< typename tree_types< N - 1, typename mpl::next<i>::type >::type>::type >::NMatXpr > {};
+
+typedef tree_types< 2, mpl::size_t<0> >::type sequence;
+
+struct print {
+    template<typename T>
+    void operator()(boost::mpl::identity<T>){
+        std::cout << typeid(T).name() << "\n";
+    }
+};
+
 /*
 template
 < class State //nullary metafunction returning current state.
@@ -637,16 +682,13 @@ struct Op {
     
     struct if_ops {
         
-        typedef typename  NMatXpr;
-        
         struct if_ {
-            typedef mpl::bool_< Tree_Optimizer<typename mpl::end<types>::type>::treechanges > treechange;
-            typedef typename Tree_Optimizer<typename mpl::end<types>::type>::NMatXpr NMatXpr;
+            typedef mpl::bool_< Tree_Optimizer<typename mpl::end<sequence>::type>::treechanges > treechange;
             typedef typename is_same<treechange, true_type>::type type;
         };
         
         struct then_ {
-            typedef typename if_::NMatXpr type;
+            typedef typename Tree_Optimizer<typename mpl::end<sequence>::type>::NMatXpr NMatXpr;
         };
         
     };
@@ -655,24 +697,20 @@ struct Op {
 
     };
     
-}; */
-
-struct Optimizer {
-    
-    template <typename MatExpr>
-    auto operator() (MatExpr& matexpr) -> decltype(Tree_Optimizer<MatExpr>::build(matexpr)) {
-        return Tree_Optimizer<MatExpr>::build(matexpr);
-    }
-    
 };
+*/
 
 int main(){
+    
+   // boost::mpl::for_each<sequence, boost::mpl::make_identity<> > (print());
+    std::cout << mpl::size<sequence>::value << std::endl << std::endl;
+    
 
-	Matrix4d A("A"), B("B"), C("C"), D("D");
-    Vector4d a("a"), b("b"), c("c"), d("d");
+	//Matrix4d A("A"), B("B"), C("C"), D("D");
+   // Vector4d a("a"), b("b"), c("c"), d("d");
     std::cout << "\n";
  
-    auto xpr = A * B + C;
+    // auto xpr = A * B + C;
     
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
