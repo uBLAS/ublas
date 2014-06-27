@@ -25,10 +25,12 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <boost/mpl/times.hpp>
 #include <boost/mpl/divides.hpp>
 #include <boost/mpl/front.hpp>
+#include <boost/mpl/fold.hpp>
+#include <boost/mpl/back.hpp>
 
-/*#include "align.hpp"
+#include "align.hpp"
 #include "alignment_trait.hpp"
-#include "aligned_array.hpp"*/
+#include "aligned_array.hpp"
 
 using namespace boost;
 
@@ -78,21 +80,11 @@ template<typename A, typename B, typename C>
 class Tree_Optimizer< Matrix_Product< Matrix_Product<A, B>, C> >;
 // end foward declarations
 
-// #include "static_matrix.hpp"
-
 // this is for the type_traits
 class Mat_Base { };
 class Matrix_Container { };
 
-template <bool Select, typename T1, typename T2>
-struct select_type {
-    typedef T1 type;
-};
-
-template <typename T1, typename T2>
-struct select_type<false, T1, T2> {
-    typedef T2 type;
-};
+#include "static_matrix.hpp"
 
 template< typename T >
 struct is_matrix_expression {
@@ -163,7 +155,10 @@ public:
         std::vector<value_type> row(cols);
         _data.resize(rows, row);
         rand_init();
-        std::cout << "- Create matrix " << m_name << std::endl;
+        if(rows == 1 || cols == 1){
+            std::cout << "- Create vector " << m_name << std::endl;
+        }
+        else { std::cout << "- Create matrix " << m_name << std::endl; }
     }
 
     Dense_Matrix(const Dense_Matrix<rows, cols>& mexpr) : _rows(rows), _cols(cols) { //sizes must be compatible
@@ -400,12 +395,13 @@ class Tree_Optimizer {
 public:
     
     enum {
-        treechanges = 0
+        treechanges = 0,
+        Cost = MatXpr::costs::Op_Cost_Total
     };
     
-    typedef MatXpr NMatXpr;
+    typedef MatXpr ReturnType;
     
-    static NMatXpr build(const MatXpr& mxpr) {
+    static ReturnType build(const MatXpr& mxpr) {
         return mxpr;
     }
 };
@@ -416,11 +412,14 @@ class Tree_Optimizer< Dense_Matrix<rows, cols> > {
 public:
     
     enum {
-        treechanges = 0
+        treechanges = 0,
+        Cost = Dense_Matrix<rows, cols>::costs::Op_Cost_Total
     };
     
-    typedef Dense_Matrix<rows, cols> NMatXpr;
-    static const Dense_Matrix<rows, cols>& build(const Dense_Matrix<rows, cols>& mxpr) { return mxpr; }
+    typedef Dense_Matrix<rows, cols> ReturnType;
+    
+    static const ReturnType& build(const Dense_Matrix<rows, cols>& mxpr) { return mxpr; }
+    
 };
 
 // Needed to forward the optimizer to the children
@@ -430,17 +429,48 @@ public:
     
     enum {
         treechanges = Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges,
+        Cost = Matrix_Sum<A, B>::costs::Op_Cost_Total
     };
     
     typedef Matrix_Sum<A, B> MatXpr;
-    typedef typename Tree_Optimizer<A>::NMatXpr NMatA;
-    typedef typename Tree_Optimizer<B>::NMatXpr NMatB;
-    typedef Matrix_Sum<NMatA, NMatB> NMatXpr;
+    typedef typename Tree_Optimizer<A>::ReturnType NMatA;
+    typedef typename Tree_Optimizer<B>::ReturnType NMatB;
+    typedef Matrix_Sum<NMatB, NMatA> NMatXpr;
     
-    static NMatXpr build(const MatXpr& mxpr) {
+    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost_Total >,
+    mpl::size_t< MatXpr::Op_Cost_Total > >::type,
+    NMatXpr, MatXpr >::type ReturnType;
+    
+    static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr);
     }
+    
 };
+
+// Needed to forward the optimizer to the children
+template<typename A, typename B>
+class Tree_Optimizer< Matrix_Difference<A, B> > {
+public:
+    
+    enum {
+        treechanges = Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges,
+        Cost = Matrix_Difference<A, B>::costs::Op_Cost_Total
+    };
+    
+    typedef Matrix_Difference<A, B> MatXpr;
+    typedef typename Tree_Optimizer<A>::ReturnType NMatA;
+    typedef typename Tree_Optimizer<B>::ReturnType NMatB;
+    typedef Matrix_Difference<NMatB, NMatA> NMatXpr;
+    
+    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost_Total >,
+    mpl::size_t< MatXpr::Op_Cost_Total > >::type,
+    NMatXpr, MatXpr >::type ReturnType;
+    
+    static ReturnType build(const MatXpr& mxpr) {
+        return Tree_Optimizer<A>::build(mxpr.matrixl) - Tree_Optimizer<B>::build(mxpr.matrixr);
+    }
+};
+
 
 // Needed to forward the optimizer to the children
 template<typename A, typename B>
@@ -449,14 +479,15 @@ public:
     
     enum {
         treechanges = Tree_Optimizer<A>::treechanges || Tree_Optimizer<B>::treechanges,
+        Cost = Matrix_Product<A, B>::costs::Op_Cost_Total
     };
     
     typedef Matrix_Product<A, B> MatXpr;
-    typedef typename Tree_Optimizer<A>::NMatXpr NMatA;
-    typedef typename Tree_Optimizer<B>::NMatXpr NMatB;
-    typedef Matrix_Product<NMatA, NMatB> NMatXpr;
+    typedef typename Tree_Optimizer<A>::ReturnType NMatA;
+    typedef typename Tree_Optimizer<B>::ReturnType NMatB;
+    typedef Matrix_Product<NMatA, NMatB> ReturnType;
     
-    static NMatXpr build(const MatXpr& mxpr) {
+    static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) * Tree_Optimizer<B>::build(mxpr.matrixr);
     }
     
@@ -468,21 +499,22 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
 public:
     
     enum {
-        treechanges = 1
+        treechanges = 1,
+        Cost = Matrix_Sum< Matrix_Product<A, B>, C>::costs::Op_Cost_Total
     };
     
     typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
-    typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > NMatXpr;
     
-    static NMatXpr build(const MatXpr& mxpr) {
+    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost_Total >,
+    mpl::size_t< MatXpr::Op_Cost_Total > >::type,
+    NMatXpr, MatXpr >::type ReturnType;
+    
+    static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
     }
-    /*
-    static NMatXpr build() {
-        return NMatXpr ();
-    }
-     */
+  
 };
 
 // catch C + A * B + D and builds (C + D) + (A * B)
@@ -492,21 +524,22 @@ public:
     
     enum {
         treechanges = 1,
+        Cost = Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost_Total
     };
     
     typedef Matrix_Sum< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
-    typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
-    typedef typename Tree_Optimizer<D>::NMatXpr NMatD;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef typename Tree_Optimizer<D>::ReturnType NMatD;
     typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > NMatXpr;
+    
+    typedef typename mpl::if_< typename mpl::less< mpl::size_t< MatXpr::Op_Cost_Total >,
+    mpl::size_t< NMatXpr::Op_Cost_Total > >::type,
+    NMatXpr, MatXpr >::type ReturnType;
 
-    static NMatXpr build(const MatXpr& mxpr) {
+    static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
     }
-    /*
-    static NMatXpr build() {
-        return NMatXpr ();
-    }
-    */
+    
 };
 
 
@@ -517,14 +550,19 @@ public:
     
     enum {
         treechanges = 1,
+        Cost = Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D>::costs::Op_Cost_Total
     };
     
     typedef Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> MatXpr;
-    typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
-    typedef typename Tree_Optimizer<D>::NMatXpr NMatD;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef typename Tree_Optimizer<D>::ReturnType NMatD;
     typedef Matrix_Sum<Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > NMatXpr;
     
-    static NMatXpr build(const MatXpr& mxpr) {
+    typedef typename mpl::if_< typename mpl::less< mpl::size_t< MatXpr::Op_Cost_Total >,
+    mpl::size_t< NMatXpr::Op_Cost_Total > >::type,
+    NMatXpr, MatXpr >::type ReturnType;
+    
+    static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixr) + Tree_Optimizer<D>::build(mxpr.matrixr) + Tree_Optimizer<Matrix_Product<A, B>>::build(mxpr.matrixl.matrixl);
     }
 };
@@ -535,7 +573,8 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> > >
 public:
     
     enum {
-        treechanges = 0
+        treechanges = 0,
+        Cost = Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> >::costs::Op_Cost_Total
     };
     
     typedef Matrix_Sum< Matrix_Product<A, B>, Matrix_Product<C, D> > MatXpr;
@@ -558,10 +597,11 @@ public:
     
     enum {
         treechanges = 1,
+        Cost = Matrix_Product< Matrix_Product<A, B>, C>::costs::Op_Cost_Total
     };
     
     typedef Matrix_Product< Matrix_Product<A, B>, C> MatXpr;
-    typedef typename Tree_Optimizer<C>::NMatXpr NMatC;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef Matrix_Product< A, Matrix_Product<B, C> > NMatXpr;
 
     template <typename c = C> //only way to get enable_if to work with member functions (ugh) return type is Matrix_Product< A, Matrix_Product<B, C> >
@@ -576,93 +616,6 @@ public:
  
 };
 
-/*
- struct Optimizer {
- 
- template <typename MatExpr>
- auto operator() (MatExpr& matexpr) -> decltype(Tree_Optimizer<MatExpr>::build(matexpr)) {
- return Tree_Optimizer<MatExpr>::build(matexpr);
- }
- 
- };
- */
-
-/*
-template <typename totalsize, typename poolsize>
-struct curry {
-    struct if_ops {
-        
-        template <typename maxelement>
-        struct if_ {
-            typedef mpl::times< totalsize , maxelement > part0;
-            typedef mpl::times< part0 , mpl::int_< 3 > > part1;
-            typedef typename mpl::greater< part1, poolsize>::type type;
-        };
-        
-        template <typename maxelement>
-        struct then_ : mpl::divides < maxelement, mpl::int_< 2 > > { };
-        
-    };
-    
-    template <typename maxelement>
-    struct loop : mpl::while_ < maxelement, if_ops> { };
-    
-};
-
-void test(void) {
-    typedef mpl::int_< 144 > totalsize_t;
-    typedef mpl::int_< 140000 > poolsize_t;
-    typedef mpl::int_< 1024 > maxelement_t;
-    typedef curry<totalsize_t, poolsize_t>::loop<maxelement_t>::type actual;
-    int const totalsize_v = totalsize_t::value;
-    int const poolsize_v = poolsize_t::value;
-    int maxelement_v = maxelement_t::value;
-    while( totalsize_v * maxelement_v * 3 > poolsize_v )
-        maxelement_v >>= 1;
-    
-    std::cout<<"actual result= " << actual::value << "\n";
-    std::cout<<"expected result= " << maxelement_v << "\n";
-}
-*/
-/*
-template
-< class State //nullary metafunction returning current state.
-, class IfOps //contains nested unary metafunctions, if_, then_.
->
-struct while_
-: mpl::eval_if < typename IfOps::template if_<typename State::type>::type , while_ < typename IfOps::template then_<typename State::type> , IfOps >, State >
-{ };
-*/
-/*
-template<
-typename C
-, typename F1
-, typename F2
->
-struct eval_if
-{
-    typedef unspecified type;
-};
-*/
-
-/*
-Matrix4d A("A"), B("B"), C("C"), D("D");
-Vector4d a("a"), b("b"), c("c"), d("d");
-auto xpr = A * B + C;
-
-template<size_t, typename> struct tree_types;
-
-template<typename i>
-struct tree_types<0, i> : mpl::vector< decltype(xpr) > {};
-
-template<size_t N, typename i>
-struct tree_types :
-mpl::push_back< typename tree_types< N - 1, typename mpl::next<i>::type >::type,
-typename Tree_Optimizer< typename mpl::front< typename tree_types< N - 1, typename mpl::next<i>::type >::type>::type >::NMatXpr > {};
-
-typedef tree_types< 2, mpl::size_t<0> >::type sequence;
-*/
-
 template<size_t, typename, typename> struct tree_types;
 
 template<typename i, typename MatXpr>
@@ -671,8 +624,7 @@ struct tree_types<0, i, MatXpr> : mpl::vector< MatXpr > {};
 template<size_t N, typename i, typename MatXpr>
 struct tree_types :
 mpl::push_back< typename tree_types< N - 1, typename mpl::next<i>::type, MatXpr >::type,
-typename Tree_Optimizer< typename mpl::front< typename tree_types< N - 1, typename mpl::next<i>::type, MatXpr >::type>::type >::NMatXpr > {};
-
+typename Tree_Optimizer< typename mpl::back< typename tree_types< N - 1, typename mpl::next<i>::type, MatXpr >::type>::type >::ReturnType > {};
 
 struct print {
     template<typename T>
@@ -680,38 +632,6 @@ struct print {
         std::cout << typeid(T).name() << "\n";
     }
 };
-
-/*
-template
-< class State //nullary metafunction returning current state.
-, class IfOps //contains nested unary metafunctions, if_, then_.
->
-struct while_
-: mpl::eval_if < typename IfOps::if_::type, while_ < typename IfOps::if_, IfOps >, typename IfOps::then_::type >
-{ };
-
-template <typename MatXpr>
-struct Op {
-    
-    struct if_ops {
-        
-        struct if_ {
-            typedef mpl::bool_< Tree_Optimizer<typename mpl::end<sequence>::type>::treechanges > treechange;
-            typedef typename is_same<treechange, true_type>::type type;
-        };
-        
-        struct then_ {
-            typedef typename Tree_Optimizer<typename mpl::end<sequence>::type>::NMatXpr NMatXpr;
-        };
-        
-    };
-    
-    struct loop : while_ < typename is_same< mpl::bool_< Tree_Optimizer<MatXpr>::treechanges >, true_type>::type, if_ops> {
-
-    };
-    
-};
-*/
 
 int main(){
     
@@ -723,20 +643,17 @@ int main(){
     
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
-    std::cout << "cost " << xpr.Op_Cost_Total << "\n";
-    
+    std::cout << "cost " << xpr.Op_Cost_Total << "\n\n";
+  
     typedef tree_types< 2, mpl::size_t<0>, decltype(xpr) >::type sequence;
     
+    std::cout << "sequence size = " << mpl::size<sequence>::value << "\n";
     boost::mpl::for_each<sequence, boost::mpl::make_identity<> > (print());
-    std::cout << mpl::size<sequence>::value << std::endl << std::endl;
+    std::cout << "\n\n";
     
     typedef decltype(xpr) Xpr;
-/*
-    typedef mpl::if_< mpl::less< mpl::size_t< decltype(Tree_Optimizer<Xpr>::build(xpr))::Op_Cost_Total >, mpl::size_t< Xpr::Op_Cost_Total > >::type, decltype(Tree_Optimizer<Xpr>::build(xpr)), Xpr>::type type;
-    type xpr1 = Opt(xpr);
-    std::cout << "cost smaller? " << Xpr::Op_Cost_Total << " " << type::Op_Cost_Total << std::endl;
-*/
     
+/*
     typedef mpl::vector< decltype(xpr) > types;
     typedef mpl::front<types>::type t;
     typedef mpl::push_front<types, decltype(Tree_Optimizer<t>::build(xpr)) >::type types1;
@@ -755,9 +672,10 @@ int main(){
     t4 xpr4 = Tree_Optimizer<t3>::build(xpr3);
     std::cout << std::endl << "optimized version 1:";
     std::cout << " " << xpr4.name() << "\n";
-    std::cout << "cost " << xpr4.Op_Cost_Total << "\n";
+    std::cout << "cost " << xpr4.Op_Cost_Total << "\n \n";
+*/
     
-    /*
+/*
     std::cout << "init version:";
     std::cout << " " << xpr.name() << "\n";
     std::cout << "cost " << xpr.Op_Cost_Total << "\n";
