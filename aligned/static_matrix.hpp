@@ -21,6 +21,16 @@ public:
     typedef self_type matrix_temporary_type;
     typedef boost::numeric::ublas::dense_tag storage_category;
     typedef typename L::orientation_category orientation_category;
+     typedef const static_matrix& Nested;
+    
+    enum traits {
+        RowsAtCompileTime = M,
+        ColsAtCompileTime = N,
+    };
+    
+    enum costs {
+        Op_Cost_Total = 0,
+    };
     
     // Construction and destruction
     
@@ -44,18 +54,18 @@ public:
     }
     
     // Return the number of rows of the matrix
-    inline size_type size1() const {
+    constexpr inline size_type size1() const {
         return size1_;
     }
-    inline size_type rows() const {
+    constexpr inline size_type rows() const {
         return size1_;
     }
     
     // Return the number of colums of the matrix
-    inline size_type size2() const {
+    constexpr inline size_type size2() const {
         return size2_;
     }
-    inline size_type cols() const {
+    constexpr inline size_type cols() const {
         return size2_;
     }
     
