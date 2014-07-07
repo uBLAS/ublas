@@ -3,6 +3,7 @@ Tree optimizer prototype and test code.
 Based on code gathered from myself, ublas, blaze, eigen.
 */
 
+#include <algorithm>
 #include <iostream>
 #include <typeinfo>
 #include <cstdlib>
@@ -27,14 +28,6 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <boost/mpl/front.hpp>
 #include <boost/mpl/fold.hpp>
 #include <boost/mpl/back.hpp>
-#include <boost/fusion/container/list.hpp>
-#include <boost/fusion/include/list.hpp>
-#include <boost/fusion/container/list/list_fwd.hpp>
-#include <boost/fusion/include/list_fwd.hpp>
-#include <boost/fusion/sequence/intrinsic/at.hpp>
-#include <boost/fusion/include/at.hpp>
-#include <boost/fusion/algorithm/transformation/push_back.hpp>
-#include <boost/fusion/include/push_back.hpp>
 #include <boost/mpl/assert.hpp>
 #include <boost/mpl/equal_to.hpp>
 #include <boost/mpl/distance.hpp>
@@ -43,6 +36,31 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/end.hpp>
 #include <boost/mpl/reverse.hpp>
+#include <boost/fusion/container/list.hpp>
+#include <boost/fusion/include/list.hpp>
+#include <boost/fusion/container/list/list_fwd.hpp>
+#include <boost/fusion/include/list_fwd.hpp>
+#include <boost/fusion/container/vector.hpp>
+#include <boost/fusion/include/vector.hpp>
+#include <boost/fusion/container/vector/vector_fwd.hpp>
+#include <boost/fusion/include/vector_fwd.hpp>
+#include <boost/fusion/sequence/intrinsic/at.hpp>
+#include <boost/fusion/include/at.hpp>
+#include <boost/fusion/algorithm/transformation/push_back.hpp>
+#include <boost/fusion/include/push_back.hpp>
+#include <boost/fusion/iterator/next.hpp>
+#include <boost/fusion/sequence/intrinsic/at_c.hpp>
+#include <boost/fusion/include/at_c.hpp>
+#include <boost/fusion/algorithm/auxiliary/copy.hpp>
+#include <boost/fusion/include/copy.hpp>
+#include <boost/fusion/algorithm/transformation/push_back.hpp>
+#include <boost/fusion/include/push_back.hpp>
+#include <boost/fusion/algorithm/auxiliary/copy.hpp>
+#include <boost/fusion/include/copy.hpp>
+#include <boost/fusion/algorithm/transformation/clear.hpp>
+#include <boost/fusion/include/clear.hpp>
+
+
 // #include "alignment_trait.hpp"
 
 using namespace boost;
@@ -81,6 +99,9 @@ class Tree_Optimizer< Matrix_Sum<A, B> >;
 template<typename A, typename B, typename C>
 class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> >;
 
+template <typename xpr1, typename... Arguments>
+class Optimize;
+
 template<typename Dest, typename Src, typename Func>
 void assign(Dest& dest, const Src& src, const Func& func);
 //--------------------------
@@ -115,17 +136,18 @@ public:
   	operator const MatXpr&() const { return static_cast<const MatXpr&>(*this); }
  
     template <typename Other>
-    Matrix_Sum<MatXpr, Other> operator+(const Matrix_Expression<Other>& other) {
+    Matrix_Sum<MatXpr, Other> operator+(const Matrix_Expression<Other>& other) const {
         return Matrix_Sum<MatXpr, Other> (matxpr(), other.matxpr());
     }
     
     template <typename Other>
-    Matrix_Product<MatXpr, Other> operator*(const Matrix_Expression<Other>& other) {
+    Matrix_Product<MatXpr, Other> operator*(const Matrix_Expression<Other>& other) const {
         return Matrix_Product<MatXpr, Other> (matxpr(), other.matxpr());
     }
 
     template<typename Other> MatXpr& operator=(const Matrix_Expression<Other>& other) {
-        assign(matxpr(), other.matxpr(), assign_default<value_type>());
+        assign(matxpr(), Tree_Optimizer<Other>::build(other.matxpr()).matxpr(), assign_default<value_type>());
+       // assign(matxpr(), other.matxpr(), assign_default<value_type>());
         return matxpr();
     }
     
@@ -168,19 +190,7 @@ public:
     inline const value_type& operator()(size_t i, size_t j) const { return _data[i][j]; }
     
     inline value_type& operator()(size_t i, size_t j) { return _data[i][j]; }
-/*
-    template <typename T>
-    Dense_Matrix& operator=(const T& right){
-        
-        for(size_t i = 0; i < size1(); ++i){
-            for(size_t j = 0; j < size2(); ++j){
-                _data[i][j] = right(i, j);
-            }
-        }
- 
-        return *this;
-    }
-*/
+
     typedef const Dense_Matrix& Nested;
     std::string m_name;
     size_t _rows, _cols;
@@ -209,11 +219,7 @@ public:
     explicit Matrix_Sum(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
     std::string name() const { return std::string("(") + matrixl.name() + " + " + matrixr.name() + ")"; }
-/*
-    inline value_type operator()(size_t i, size_t j) const {
-      	return matrixl(i, j) + matrixr(i, j);
-    }
-*/
+
     typename MatrixL::Nested matrixl;
     typename MatrixR::Nested matrixr;
     
@@ -237,24 +243,6 @@ public:
     explicit Matrix_Product(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
     std::string name() const { return std::string("(") + matrixl.name() + " * " + matrixr.name() + ")"; }
-/*
-	inline value_type operator()(size_t i, size_t j) const {
-        
-        value_type tmp = 0;
-        const size_t end = ( ( matrixl.size2() - 1 ) & size_t(-2) ) + 1;
-        
-        tmp = matrixl(i, 0) * matrixr(0, j);
-        for(size_t k = 1; k < end; k += 2) {
-            tmp += matrixl(i, k) * matrixr(k, j);
-            tmp += matrixl(i, k + 1) * matrixr(k + 1, j);
-        }
-        if(end < matrixl.size2()) {
-            tmp += matrixl(i, end) * matrixr(end, j);
-        }
-        
-        return tmp;
-    }
-*/
     
     typename MatrixL::Nested matrixl;
 	typename MatrixR::Nested matrixr;
@@ -415,34 +403,15 @@ void dense_assignment_loop(A& a, const B& b, const Op& op) {
 // --- Assignment ---
 //-------------------
 
-// The only purpose of this assign() function is to deal with noalias/MayAlias
-// so that the main Assignment do not has to bother about these annoying details
-
 template<typename Dest, typename Src, typename Func>
 void assign(Dest& dest, const Src& src, const Func& func) {
-  //  typedef typename std::conditional<evaluator<Src>::MayAlias==1, EvalToTemp<Src>, Src>::type ActualSrc;
-  //  Assignment<Dst, ActualSrc, Func>::run(dst, src, func);
     Assignment<Dest, Src, Func>::run(dest, src, func);
 }
-/*
-// by-pass MayAlias
-template<typename Dst, typename Src, typename Func>
-void assign(Noalias<Dst>& dst, const Src& src, const Func& func)
-{
-    Assignment<Dst,Src,Func>::run(dst.m_a, src, func);
-}
-*/
-
-
-// In Assignment, aliasing and noalias have already been resolved,
-// so we assume no aliasing:
-// - The type A cannot be a Noalias<>.
-// - evaluator<B>::MayAlias has to be ignored.
 
 
 template<typename A, typename B, typename Op>
 struct Assignment {
-    static void run(A& a, const B& b, const Op& op) {
+    static void run(A& a, const B& b, const Op& op) { std::cout << "1 " << std::endl;
         dense_assignment_loop(a, b, op);
     }
 };
@@ -450,7 +419,7 @@ struct Assignment {
 // specialization for a = b * c (dense)
 template<typename A, typename ProdLhs, typename ProdRhs>
 struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_default<value_type>> {
-    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_default<value_type>& ) {
+    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_default<value_type>& ) { std::cout << "2 " << std::endl;
         for(size_t i = 0; i < a.rows(); ++i){
             for(size_t j = 0; j < a.cols(); ++j){
                 a(i, j) = value_type(0);
@@ -463,7 +432,7 @@ struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_default<value_type
 // specialization for a += b * c (dense)
 template<typename A, typename ProdLhs, typename ProdRhs>
 struct Assignment<A, Matrix_Product<ProdLhs,ProdRhs>, assign_add<value_type>> {
-    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_add<value_type>& ) {
+    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_add<value_type>& ) { std::cout << "3 " << std::endl;
         product_impl(a, b);
     }
 };
@@ -471,23 +440,22 @@ struct Assignment<A, Matrix_Product<ProdLhs,ProdRhs>, assign_add<value_type>> {
 // specialization for a = d + b * c (dense)
 template<typename A, typename D, typename ProdLhs, typename ProdRhs, typename Op>
 struct Assignment<A, Matrix_Sum<D, Matrix_Product<ProdLhs, ProdRhs> >, Op> {
-    static void run(A& a, const Matrix_Sum<D, Matrix_Product<ProdLhs,ProdRhs> >& b, const Op& op) {
+    static void run(A& a, const Matrix_Sum<D, Matrix_Product<ProdLhs,ProdRhs> >& b, const Op& op) { std::cout << "4 " << std::endl;
         Assignment<A, D, Op>::run(a, b.matrixl, op);
         Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_add<value_type> >::run(a, b.matrixr, assign_add<value_type>() );
     }
 };
 
 
-
 // Default tree optimizer that copies the expression by value
 template<typename MatXpr>
 class Tree_Optimizer {
 public:
-    
+    /*
     enum {
         Cost = MatXpr::costs::Op_Cost
     };
-    
+    */
     typedef MatXpr ReturnType;
     
     static ReturnType build(const MatXpr& mxpr) {
@@ -499,11 +467,11 @@ public:
 template<size_t rows, size_t cols>
 class Tree_Optimizer< Dense_Matrix<rows, cols> > {
 public:
-    
+    /*
     enum {
         Cost = Dense_Matrix<rows, cols>::costs::Op_Cost
     };
-    
+    */
     typedef Dense_Matrix<rows, cols> ReturnType;
     
     static const ReturnType& build(const Dense_Matrix<rows, cols>& mxpr) { return mxpr; }
@@ -514,20 +482,21 @@ public:
 template<typename A, typename B>
 class Tree_Optimizer< Matrix_Sum<A, B> > {
 public:
-    
+    /*
     enum {
         Cost = Matrix_Sum<A, B>::costs::Op_Cost
     };
-    
+    */
     typedef Matrix_Sum<A, B> MatXpr;
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
     typedef Matrix_Sum<NMatB, NMatA> NMatXpr;
-    
+    typedef Matrix_Sum<NMatA, NMatB> ReturnType;
+    /*
     typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost >,
     mpl::size_t< MatXpr::Op_Cost > >::type,
     NMatXpr, MatXpr >::type ReturnType;
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr);
     }
@@ -538,24 +507,125 @@ public:
 template<typename A, typename B, typename C>
 class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
 public:
-    
+    /*
     enum {
         Cost = Matrix_Sum< Matrix_Product<A, B>, C>::costs::Op_Cost
     };
-    
+    */
     typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > NMatXpr;
-    
+    typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > ReturnType;
+    /*
     typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost >,
     mpl::size_t< MatXpr::Op_Cost > >::type,
     NMatXpr, MatXpr >::type ReturnType;
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
     }
   
 };
+
+template<size_t, typename, typename> struct expression_types;
+
+template<typename i, typename MatXpr>
+struct expression_types<0, i, MatXpr> : mpl::vector< MatXpr > {};
+
+template<size_t N, typename i, typename MatXpr>
+struct expression_types :
+mpl::push_back< typename expression_types< N - 1, typename mpl::next<i>::type, MatXpr >::type,
+typename Tree_Optimizer< typename mpl::back< typename expression_types< N - 1, typename mpl::next<i>::type, MatXpr >::type>::type >::ReturnType > {};
+
+struct print {
+    template<typename T>
+    void operator()(boost::mpl::identity<T>){
+        std::cout << typeid(T).name() << "\n";
+    }
+};
+
+template <typename xpr1, typename... Arguments>
+class Optimize {
+    
+public:
+    static const int size = sizeof... (Arguments);
+    
+    typedef typename mpl::vector< xpr1, Arguments... >::type expressions;
+    
+    template <size_t index>
+    struct fn {
+        
+        typename mpl::at_c<expressions, index + 1>::type operator() (const typename mpl::at_c<expressions, index>::type& matxpr) const {
+            return Tree_Optimizer<typename mpl::at_c<expressions, index>::type>::build(matxpr);
+        }
+        
+    };
+    
+    template <size_t First, size_t Last, size_t Difference>
+    struct static_for {
+        template <typename Fn, typename MatXpr>
+        typename mpl::at_c<expressions, size>::type operator()(Fn const& func, const MatXpr& xpr) const {
+            auto nxpr = func(xpr);
+            return static_for<First + 1, Last, Difference - 1>()(fn<First + 1>(), nxpr);
+        }
+    };
+    
+    template <size_t First, size_t Last>
+    struct static_for<First, Last, 1> {
+        template <typename Fn, typename MatXpr>
+        auto operator()(Fn const& func, const MatXpr& xpr) -> decltype(func(xpr)) {
+            return func(xpr);
+        }
+    };
+    
+    static typename mpl::at_c<expressions, size>::type optimize(const xpr1& matxpr) {
+        return static_for<0, size, size>()(fn<0>(), matxpr);
+    }
+    
+};
+
+namespace impl {
+    
+    template <typename F, typename L>
+    struct exit : boost::mpl::equal_to<
+    typename boost::mpl::distance<F, L>::type,
+    boost::mpl::int_<0> > {};
+    
+    template <typename F, typename L, bool exit, typename ...Args>
+    struct to_variadic {
+        typedef typename boost::mpl::deref<F>::type front_;
+        typedef typename boost::mpl::next<F>::type next_;
+        typedef typename impl::exit<next_, L>::type exit_;
+        typedef typename to_variadic<next_, L,
+        exit_::value, front_, Args...>::type type;
+    };
+    
+    template <typename F, typename L, typename ...Args>
+    struct to_variadic<F, L, true, Args...>{
+        typedef Optimize<Args...> type;
+    };
+    
+    template <typename Seq>
+    struct seq_traits{
+        typedef typename boost::mpl::begin<Seq>::type first_;
+        typedef typename boost::mpl::end<Seq>::type last_;
+        typedef typename impl::exit<first_, last_>::type exit_;
+    };
+    
+}//impl
+
+template<typename Seq>
+struct to_variadic{
+    typedef typename boost::mpl::reverse<
+    Seq>::type reversed_;
+    typedef typename impl::to_variadic<
+    typename impl::seq_traits<reversed_>::first_,
+    typename impl::seq_traits<reversed_>::last_,
+    impl::seq_traits<Seq>::exit_::value
+    >::type type;
+};
+
+
 
 int main(){
     
@@ -570,6 +640,16 @@ int main(){
     std::cout << "D = C + A * B; \n";
     D = C + A * B;
     std::cout << "\n";
+    
+    typedef expression_types< 5, mpl::size_t<0>, decltype(A * B + C) >::type sequence;
+    std::cout << "sequence size = " << mpl::size<sequence>::value << "\n";
+    boost::mpl::for_each<sequence, boost::mpl::make_identity<> > (print());
+    std::cout << "\n\n";
   
+    auto xpr = A * B + C;
+    typedef to_variadic< sequence >::type tree_optimizer;
+    auto result = tree_optimizer::optimize(xpr);
+    std::cout << "result? " << typeid(result).name() << "\n";
+    
  	return 0;
 }
