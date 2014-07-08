@@ -275,6 +275,43 @@ public:
     
 };
 
+//Represents the matrix difference.
+template <typename MatrixL, typename MatrixR>
+class Matrix_Difference : public Matrix_Expression< Matrix_Difference<MatrixL, MatrixR> > {
+    
+public:
+    
+    //typedef typename MatrixL::value_type value_type;
+    typedef const Matrix_Difference Nested; //these are needed for the tree optimizer object
+    
+    enum traits {
+        // this is the resulting size of the expression, matrix sum operation so sizes are compatible
+        RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime,
+        ColsAtCompileTime = MatrixL::traits::ColsAtCompileTime,
+        IsContainerL = is_matrix_container<MatrixL>::value, // container or doesn't require evaluation
+        IsContainerR = is_matrix_container<MatrixR>::value,
+    };
+    
+    enum costs {
+        Temp_Cost = 1,
+        Op_CostL = IsContainerL == 1 ? 0 : MatrixL::costs::Op_Cost,
+        Op_CostR = (IsContainerR == 1 && IsContainerL == 0) ? Temp_Cost + MatrixR::costs::Op_Cost : MatrixR::costs::Op_Cost, //because we're doing like A*B-C instead of C-A*B we incur a temporary cost
+        Op_Cost_Flops = RowsAtCompileTime * ColsAtCompileTime,
+        Op_Cost = Op_Cost_Flops + Op_CostL + Op_CostR,
+    };
+    
+	explicit Matrix_Difference(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
+    
+	~Matrix_Difference() {}
+    
+	std::string name() const { return std::string("(") + matrixl.name() + " - " + matrixr.name() + ")"; }
+    
+    typename MatrixL::Nested matrixl;
+    typename MatrixR::Nested matrixr;
+    
+};
+
+
 //represents a matrix product
 template <typename MatrixL, typename MatrixR>
 class Matrix_Product : public Matrix_Expression< Matrix_Product<MatrixL, MatrixR> > {
@@ -491,7 +528,7 @@ struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_default<value_type
 
 // specialization for a += b * c (dense)
 template<typename A, typename ProdLhs, typename ProdRhs>
-struct Assignment<A, Matrix_Product<ProdLhs,ProdRhs>, assign_add<value_type>> {
+struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_add<value_type>> {
     static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_add<value_type>& ) { std::cout << "3 " << std::endl;
         product_impl(a, b);
     }
@@ -563,6 +600,50 @@ public:
     
 };
 
+// Needed to forward the optimizer to the children
+template<typename A, typename B>
+class Tree_Optimizer< Matrix_Difference<A, B> > {
+public:
+    
+    enum {
+        Cost = Matrix_Difference<A, B>::costs::Op_Cost
+    };
+    
+    typedef Matrix_Difference<A, B> MatXpr;
+    typedef typename Tree_Optimizer<A>::ReturnType NMatA;
+    typedef typename Tree_Optimizer<B>::ReturnType NMatB;
+    typedef Matrix_Difference<NMatB, NMatA> ReturnType;
+    /*
+    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost >,
+    mpl::size_t< MatXpr::Op_Cost > >::type,
+    NMatXpr, MatXpr >::type ReturnType;
+    */
+    static ReturnType build(const MatXpr& mxpr) {
+        return Tree_Optimizer<A>::build(mxpr.matrixl) - Tree_Optimizer<B>::build(mxpr.matrixr);
+    }
+};
+
+// Needed to forward the optimizer to the children
+template<typename A, typename B>
+class Tree_Optimizer< Matrix_Product<A, B> > {
+public:
+    
+    enum {
+        Cost = Matrix_Product<A, B>::costs::Op_Cost
+    };
+    
+    typedef Matrix_Product<A, B> MatXpr;
+    typedef typename Tree_Optimizer<A>::ReturnType NMatA;
+    typedef typename Tree_Optimizer<B>::ReturnType NMatB;
+    typedef Matrix_Product<NMatA, NMatB> ReturnType;
+    
+    static ReturnType build(const MatXpr& mxpr) {
+        return Tree_Optimizer<A>::build(mxpr.matrixl) * Tree_Optimizer<B>::build(mxpr.matrixr);
+    }
+    
+};
+
+
 // catch A * B + C and builds C + A * B
 template<typename A, typename B, typename C>
 class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
@@ -593,7 +674,6 @@ class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
 public:
     
     enum {
-        treechanges = 1,
         Cost = Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
     };
     
