@@ -61,7 +61,6 @@ Based on code gathered from myself, ublas, blaze, eigen.
 #include <boost/fusion/algorithm/transformation/clear.hpp>
 #include <boost/fusion/include/clear.hpp>
 
-
 #include "alignment_trait.hpp"
 
 using namespace boost;
@@ -79,6 +78,9 @@ class Dense_Matrix;
 
 template <typename MatrixL, typename MatrixR>
 class Matrix_Sum;
+
+template <typename MatrixL, typename MatrixR>
+class Matrix_Difference;
 
 template <typename MatrixL, typename MatrixR>
 class Matrix_Product;
@@ -159,6 +161,17 @@ template<typename Scalar> struct assign_add {
     std::string name() const { return " += "; }
 };
 
+template<typename Scalar> struct assign_subtract {
+    void assign(Scalar& a, const Scalar& b) const { a -= b; }
+    std::string name() const { return " -= "; }
+};
+
+template<typename Scalar> struct assign_mult {
+    void assign(Scalar& a, const Scalar& b) const { a *= b; }
+    std::string name() const { return " *= "; }
+};
+
+
 template <typename MatXpr>
 class Matrix_Expression {
   
@@ -178,10 +191,15 @@ public:
     }
     
     template <typename Other>
+    Matrix_Difference<MatXpr, Other> operator-(const Matrix_Expression<Other>& other) const {
+        return Matrix_Difference<MatXpr, Other> (matxpr(), other.matxpr());
+    }
+    
+    template <typename Other>
     Matrix_Product<MatXpr, Other> operator*(const Matrix_Expression<Other>& other) const {
         return Matrix_Product<MatXpr, Other> (matxpr(), other.matxpr());
     }
-
+    
     template<typename Other> MatXpr& operator=(const Matrix_Expression<Other>& other) {
         assign(matxpr(), other.matxpr(), assign_default<value_type>());
         return matxpr();
@@ -189,6 +207,11 @@ public:
     
     template<typename Other> MatXpr& operator+=(const Matrix_Expression<Other>& other) {
         assign(matxpr(), other.matxpr(), assign_add<value_type>());
+        return matxpr();
+    }
+    
+    template<typename Other> MatXpr& operator-=(const Matrix_Expression<Other>& other) {
+        assign(matxpr(), other.matxpr(), assign_subtract<value_type>());
         return matxpr();
     }
     
@@ -221,6 +244,11 @@ public:
         else { std::cout << "- Create matrix " << m_name << std::endl; }
     }
     
+    Dense_Matrix(value_type c) : _rows(Rows), _cols(Cols) { // initializer constructor
+        std::vector<value_type> row(_cols, c);
+        _data.resize(_rows, row);
+    }
+    
     inline std::string name() const { return m_name; } //just the name
     
     constexpr inline size_t rows() const { return _rows; }
@@ -230,7 +258,7 @@ public:
     inline const value_type& operator()(size_t i, size_t j) const { return _data[i][j]; }
     
     inline value_type& operator()(size_t i, size_t j) { return _data[i][j]; }
-
+    
     typedef const Dense_Matrix& Nested;
     std::string m_name;
     size_t _rows, _cols;
@@ -383,7 +411,7 @@ struct evaluator< Dense_Matrix<rows, cols> > {
 
 // evaluator of A + B
 template<typename A, typename B>
-struct evaluator<Matrix_Sum<A, B>> {
+struct evaluator< Matrix_Sum<A, B> > {
     
     typedef evaluator type;
     evaluator(const Matrix_Sum<A, B>& plus) : matrixl(plus.matrixl), matrixr(plus.matrixr) {}
@@ -395,7 +423,21 @@ struct evaluator<Matrix_Sum<A, B>> {
     
 };
 
-/// low level product implementation (c += a*b) - like blas's gemm
+// evaluator of A - B
+template<typename A, typename B>
+struct evaluator< Matrix_Difference<A, B> > {
+    
+    typedef evaluator type;
+    evaluator(const Matrix_Difference<A, B>& difference) : matrixl(difference.matrixl), matrixr(difference.matrixr) {}
+    inline const value_type operator()(size_t i, size_t j) const { return matrixl(i, j) - matrixr(i, j); }
+    typename evaluator<A>::type matrixl;
+    typename evaluator<B>::type matrixr;
+    
+    std::string name() const { return std::string("(") + matrixl.name() + " - " + matrixr.name() + ")"; }
+    
+};
+
+/// low level product implementation (c += a*b)
 template<typename Dest, typename A, typename B>
 void product_impl_low_level(Dest& c, const A& a, const B& b) {
     
@@ -417,6 +459,30 @@ void product_impl_low_level(Dest& c, const A& a, const B& b) {
         }
     }
 }
+
+/// low level product implementation (c -= a*b)
+template<typename Dest, typename A, typename B>
+void product_sub_impl_low_level(Dest& c, const A& a, const B& b) {
+    
+    for(size_t i = 0; i < c.rows(); ++i){
+        for(size_t j = 0; j < c.cols(); ++j){
+            value_type tmp = 0;
+            const size_t end = ( ( a.cols() - 1 ) & size_t(-2) ) + 1;
+            
+            tmp = a(i, 0) * b(0, j);
+            for(size_t k = 1; k < end; k += 2) {
+                tmp += a(i, k) * b(k, j);
+                tmp += a(i, k + 1) * b(k + 1, j);
+            }
+            if(end < a.cols()) {
+                tmp += a(i, end) * b(end, j);
+            }
+            
+            c(i, j) -= tmp;
+        }
+    }
+}
+
 
 // special product evaluator (in Eigen it is currently equivalent to blas_traits)
 template <typename MatXpr>
@@ -446,12 +512,23 @@ void product_impl(Dest& dest, const Matrix_Product<A, B>& prod) {
     product_impl_low_level(dest, lhs.m_mat, rhs.m_mat);
 };
 
+/// performs dest -= a * b;
+/// A general implementation must be available outisde the evaluator because it is needed by both
+/// evaluator<Product> and Assignment<..., Product<...> > for in-place product evaluation
+template <typename Dest, typename A, typename B>
+void product_subtract_impl(Dest& dest, const Matrix_Product<A, B>& prod) {
+    product_evaluator<A> lhs(prod.matrixl);
+    product_evaluator<B> rhs(prod.matrixr);
+    std::cout << "- performs: " << dest.m_name << " -= " << lhs.name() << " * " << rhs.name() + " in place\n";
+    product_sub_impl_low_level(dest, lhs.m_mat, rhs.m_mat);
+};
+
 /// Matrix product evaluator, products are complex and must be evaluated into a temporary
 /// unless the evaluator is by-passed by specializations of Assignment<>
 template <typename A, typename B>
-struct evaluator< Matrix_Product<A, B> > : evaluator<Dense_Matrix<Matrix_Product<A, B>::traits::RowsAtCompileTime, Matrix_Product<A, B>::traits::ColsAtCompileTime>> {
+struct evaluator< Matrix_Product<A, B> > : evaluator< Dense_Matrix<Matrix_Product<A, B>::traits::RowsAtCompileTime, Matrix_Product<A, B>::traits::ColsAtCompileTime> > {
     
-    typedef evaluator<Dense_Matrix<Matrix_Product<A, B>::traits::RowsAtCompileTime, Matrix_Product<A, B>::traits::ColsAtCompileTime>> Base;
+    typedef evaluator< Dense_Matrix<Matrix_Product<A, B>::traits::RowsAtCompileTime, Matrix_Product<A, B>::traits::ColsAtCompileTime> > Base;
     typedef evaluator type;
     
     evaluator(const Matrix_Product<A, B>& prod) : Base(mresult), mresult(std::string("product_res_of_\"") + prod.name() + "\"") {
@@ -469,7 +546,7 @@ struct evaluator< Matrix_Product<A, B> > : evaluator<Dense_Matrix<Matrix_Product
 };
 
 template <typename A>
-struct evaluator<Eval_To_Temp<A>> : evaluator<Dense_Matrix<A::traits::RowsAtCompileTime, A::traits::ColsAtCompileTime>> {
+struct evaluator<Eval_To_Temp<A>> : evaluator< Dense_Matrix<A::traits::RowsAtCompileTime, A::traits::ColsAtCompileTime> > {
   
     typedef evaluator<Dense_Matrix<A::traits::RowsAtCompileTime, A::traits::ColsAtCompileTime>> Base;
     typedef evaluator type;
@@ -505,10 +582,9 @@ void assign(Dest& dest, const Src& src, const Func& func) {
     Assignment<Dest, Src, Func>::run(dest, src, func);
 }
 
-
 template<typename A, typename B, typename Op>
 struct Assignment {
-    static void run(A& a, const B& b, const Op& op) { std::cout << "1 " << std::endl;
+    static void run(A& a, const B& b, const Op& op) {
         dense_assignment_loop(a, b, op);
     }
 };
@@ -516,7 +592,7 @@ struct Assignment {
 // specialization for a = b * c (dense)
 template<typename A, typename ProdLhs, typename ProdRhs>
 struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_default<value_type>> {
-    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_default<value_type>& ) { std::cout << "2 " << std::endl;
+    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_default<value_type>& ) {
         for(size_t i = 0; i < a.rows(); ++i){
             for(size_t j = 0; j < a.cols(); ++j){
                 a(i, j) = value_type(0);
@@ -529,17 +605,34 @@ struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_default<value_type
 // specialization for a += b * c (dense)
 template<typename A, typename ProdLhs, typename ProdRhs>
 struct Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_add<value_type>> {
-    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_add<value_type>& ) { std::cout << "3 " << std::endl;
+    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_add<value_type>& ) {
         product_impl(a, b);
+    }
+};
+
+// specialization for a -= b * c (dense)
+template<typename A, typename ProdLhs, typename ProdRhs>
+struct Assignment< A, Matrix_Product<ProdLhs, ProdRhs>, assign_subtract<value_type> > {
+    static void run(A& a, const Matrix_Product<ProdLhs, ProdRhs>& b, const assign_subtract<value_type>& ) {
+        product_subtract_impl(a, b);
     }
 };
 
 // specialization for a = d + b * c (dense)
 template<typename A, typename D, typename ProdLhs, typename ProdRhs, typename Op>
 struct Assignment<A, Matrix_Sum<D, Matrix_Product<ProdLhs, ProdRhs> >, Op> {
-    static void run(A& a, const Matrix_Sum<D, Matrix_Product<ProdLhs,ProdRhs> >& b, const Op& op) { std::cout << "4 " << std::endl;
+    static void run(A& a, const Matrix_Sum<D, Matrix_Product<ProdLhs,ProdRhs> >& b, const Op& op) {
         Assignment<A, D, Op>::run(a, b.matrixl, op);
         Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_add<value_type> >::run(a, b.matrixr, assign_add<value_type>() );
+    }
+};
+
+// specialization for a = d - b * c (dense)
+template<typename A, typename D, typename ProdLhs, typename ProdRhs, typename Op>
+struct Assignment<A, Matrix_Difference<D, Matrix_Product<ProdLhs, ProdRhs> >, Op> {
+    static void run(A& a, const Matrix_Sum<D, Matrix_Product<ProdLhs,ProdRhs> >& b, const Op& op) {
+        Assignment<A, D, Op>::run(a, b.matrixl, op);
+        Assignment<A, Matrix_Product<ProdLhs, ProdRhs>, assign_subtract<value_type> >::run(a, b.matrixr, assign_subtract<value_type>() );
     }
 };
 
@@ -549,11 +642,11 @@ template<typename MatXpr>
 class Tree_Optimizer {
 public:
     
+    typedef MatXpr ReturnType;
+    
     enum {
         Cost = MatXpr::costs::Op_Cost
     };
-    
-    typedef MatXpr ReturnType;
     
     static ReturnType build(const MatXpr& mxpr) {
         return mxpr;
@@ -565,11 +658,11 @@ template<size_t rows, size_t cols>
 class Tree_Optimizer< Dense_Matrix<rows, cols> > {
 public:
     
+    typedef Dense_Matrix<rows, cols> ReturnType;
+    
     enum {
         Cost = Dense_Matrix<rows, cols>::costs::Op_Cost
     };
-    
-    typedef Dense_Matrix<rows, cols> ReturnType;
     
     static const ReturnType& build(const Dense_Matrix<rows, cols>& mxpr) { return mxpr; }
     
@@ -580,20 +673,15 @@ template<typename A, typename B>
 class Tree_Optimizer< Matrix_Sum<A, B> > {
 public:
     
-    enum {
-        Cost = Matrix_Sum<A, B>::costs::Op_Cost
-    };
-    
     typedef Matrix_Sum<A, B> MatXpr;
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
-    typedef Matrix_Sum<NMatB, NMatA> NMatXpr;
     typedef Matrix_Sum<NMatA, NMatB> ReturnType;
-    /*
-    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost >,
-    mpl::size_t< MatXpr::Op_Cost > >::type,
-    NMatXpr, MatXpr >::type ReturnType;
-    */
+    
+    enum {
+        Cost = Matrix_Sum<A, B>::costs::Op_Cost
+    };
+   
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr);
     }
@@ -605,19 +693,15 @@ template<typename A, typename B>
 class Tree_Optimizer< Matrix_Difference<A, B> > {
 public:
     
-    enum {
-        Cost = Matrix_Difference<A, B>::costs::Op_Cost
-    };
-    
     typedef Matrix_Difference<A, B> MatXpr;
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
-    typedef Matrix_Difference<NMatB, NMatA> ReturnType;
-    /*
-    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost >,
-    mpl::size_t< MatXpr::Op_Cost > >::type,
-    NMatXpr, MatXpr >::type ReturnType;
-    */
+    typedef Matrix_Difference<NMatA, NMatB> ReturnType;
+    
+    enum {
+        Cost = Matrix_Difference<A, B>::costs::Op_Cost
+    };
+  
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) - Tree_Optimizer<B>::build(mxpr.matrixr);
     }
@@ -628,14 +712,14 @@ template<typename A, typename B>
 class Tree_Optimizer< Matrix_Product<A, B> > {
 public:
     
-    enum {
-        Cost = Matrix_Product<A, B>::costs::Op_Cost
-    };
-    
     typedef Matrix_Product<A, B> MatXpr;
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
     typedef Matrix_Product<NMatA, NMatB> ReturnType;
+    
+    enum {
+        Cost = Matrix_Product<A, B>::costs::Op_Cost
+    };
     
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) * Tree_Optimizer<B>::build(mxpr.matrixr);
@@ -649,19 +733,14 @@ template<typename A, typename B, typename C>
 class Tree_Optimizer< Matrix_Sum< Matrix_Product<A, B>, C> > {
 public:
     
+    typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > ReturnType;
+    
     enum {
         Cost = Matrix_Sum< Matrix_Product<A, B>, C>::costs::Op_Cost
     };
-    
-    typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
-    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
-    typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > NMatXpr;
-    typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > ReturnType;
-    /*
-    typedef typename mpl::if_< typename mpl::less< mpl::size_t< NMatXpr::Op_Cost >,
-    mpl::size_t< MatXpr::Op_Cost > >::type,
-    NMatXpr, MatXpr >::type ReturnType;
-    */
+
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
     }
@@ -673,26 +752,81 @@ template<typename A, typename B, typename C, typename D>
 class Tree_Optimizer< Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
 public:
     
-    enum {
-        Cost = Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
-    };
-    
     typedef Matrix_Sum< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef typename Tree_Optimizer<D>::ReturnType NMatD;
-    typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A, B> > NMatXpr;
     typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
+    
+    enum {
+        Cost = Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
+    };
 
-    /*
-    typedef typename mpl::if_< typename mpl::less< mpl::size_t< MatXpr::Op_Cost >,
-    mpl::size_t< NMatXpr::Op_Cost] > >::type,
-    NMatXpr, MatXpr >::type ReturnType;
-    */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
     }
     
 };
+
+// catch A * B - C and builds -C + A * B
+template<typename A, typename B, typename C>
+class Tree_Optimizer< Matrix_Difference< Matrix_Product<A, B>, C> > {
+public:
+    
+    typedef Matrix_Difference<Matrix_Product<A, B>, C> MatXpr;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > ReturnType;
+    
+    enum {
+        Cost = Matrix_Sum< Matrix_Product<A, B>, C>::costs::Op_Cost
+    };
+    
+    static ReturnType build(const MatXpr& mxpr) {
+        // there is a sign issue here!
+        return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
+    }
+    
+};
+
+// catch C + A * B - D and builds (C - D) + (A * B)
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Difference< Matrix_Sum<C, Matrix_Product<A, B> >, D> > {
+public:
+    
+    typedef Matrix_Difference< Matrix_Sum<C, Matrix_Product<A,B> >, D> MatXpr;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef typename Tree_Optimizer<D>::ReturnType NMatD;
+    typedef Matrix_Sum< Matrix_Difference<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
+    
+    enum {
+        Cost = Matrix_Difference< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
+    };
+    
+    static ReturnType build(const MatXpr& mxpr) {
+        return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) - Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
+    }
+    
+};
+
+// catch C - A * B + D and builds (C + D) - (A * B)
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Sum< Matrix_Difference<C, Matrix_Product<A, B> >, D> > {
+public:
+    
+    typedef Matrix_Sum< Matrix_Difference<C, Matrix_Product<A, B> >, D> MatXpr;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef typename Tree_Optimizer<D>::ReturnType NMatD;
+    typedef Matrix_Difference< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
+    
+    enum {
+        Cost = Matrix_Difference< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
+    };
+    
+    static ReturnType build(const MatXpr& mxpr) {
+        return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) - mxpr.matrixl.matrixr;
+    }
+    
+};
+
 
 template<size_t, typename, typename> struct expression_types1;
 
@@ -732,7 +866,7 @@ typename Tree_Optimizer< typename mpl::back< typename expression_types< N - 1, t
 
 struct print {
     template<typename T>
-    void operator()(boost::mpl::identity<T>){
+    void operator()(mpl::identity<T>){
         std::cout << typeid(T).name() << "\n";
     }
 };
@@ -832,7 +966,7 @@ int main(){
     
     std::cout << "D = C + A * B; \n";
     D = C + A * B;
-    std::cout << "\n";
+    std::cout << "\n\n";
     
     auto xpr = A * B + C;
     std::cout << "before name: " << xpr.name() << "\n";
@@ -892,5 +1026,13 @@ int main(){
     std::cout << (A * B + C + D).name() << " " << (D + A * B + C).name() << " " << (C + D + A * B).name() << "\n\n";
     std::cout << decltype(A * B + C + D)::Op_Cost << " " << decltype(D + A * B + C)::Op_Cost << " " << decltype(C + D + A * B)::Op_Cost << "\n\n";
     
+    auto xpr5 = A * B + C - D;
+    std::cout << "before name: " << xpr5.name() << "\n";
+    Tree_Optimizer<decltype(xpr5)>::ReturnType result5 = Tree_Optimizer<decltype(xpr5)>::build(xpr5);
+    std::cout << "after name: " << result5.name() << "\n";
+    
+    std::cout << "\n" << "Is the cost minimized? " << "\n";
+    std::cout << decltype(C - A * B + D)::Op_Cost << " " << decltype(C - A * B + D)::Op_Cost << "\n\n";
+
  	return 0;
 }
