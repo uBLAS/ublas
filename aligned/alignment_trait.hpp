@@ -35,12 +35,56 @@ struct select_type<false, T1, T2> {
 };
 
 template <typename T>
+struct is_numeric {
+    enum { value = 0 };
+};
+
+template <>
+struct is_numeric<int> {
+    enum { value = 1 };
+};
+
+template <>
+struct is_numeric<long int> {
+    enum { value = 1 };
+};
+
+template <>
+struct is_numeric<long long int> {
+    enum { value = 1 };
+};
+
+template <>
+struct is_numeric<float> {
+    enum { value = 1 };
+};
+
+template <>
+struct is_numeric<double> {
+    enum { value = 1 };
+};
+
+template <typename T>
 struct is_vectorizable {
-    enum { value = ( UBLAS_HAS_SSE  && ( boost::is_integral<T>::value ) ) ||
-        ( UBLAS_HAS_SSE && ( boost::is_floating_point<T>::value ) ) };
+    enum {
+        value = ( UBLAS_HAS_SSE  && ( is_numeric<T>::value ) ) ||
+        ( UBLAS_HAS_AVX && ( is_numeric<T>::value ) )
+    };
     typedef typename select_type<value, boost::true_type, boost::false_type>::type  type;
 };
 
+template <typename T>
+struct num_traits {
+    
+    enum {
+        IsNumeric = is_numeric<T>::value,
+        IsVectorizable = is_vectorizable<T>::value,
+        ReadCost = 1, // setting the default single machine instruction cost to 1 for all types
+        MultCost = 1,
+        AddCost = 1,
+    };
+    
+};
 
 template <typename T>
 struct alignment_trait {
