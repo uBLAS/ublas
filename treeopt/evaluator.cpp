@@ -229,10 +229,16 @@ public:
     enum traits {
         RowsAtCompileTime = Rows,
         ColsAtCompileTime = Cols,
+        SizeAtCompileTime = Rows * Cols,
+        
+        IsVectorizable = num_traits<value_type>::IsVectorizable,
     };
     
     enum costs {
-        Op_Cost = 0,
+        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime, // because it's just an matrix we only have a read cost associated with this expression
+        AddCost = 0,
+        MultCost = 0,
+        Op_Cost = ReadCost,
     };
 
     Dense_Matrix(const std::string& name) : m_name(name), _rows(Rows), _cols(Cols) {
@@ -282,16 +288,29 @@ public:
         // this is the resulting size of the expression, matrix sum operation so sizes are compatible
         RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime,
         ColsAtCompileTime = MatrixL::traits::ColsAtCompileTime,
-        IsContainerL = is_matrix_container<MatrixL>::value, // container or doesn't require evaluation
-        IsContainerR = is_matrix_container<MatrixR>::value,
+        SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
+        
+        // container or doesn't require evaluation
+        IsContainerL = is_matrix_container<MatrixL>::value || !requires_evaluation<MatrixL>::value,
+        IsContainerR = is_matrix_container<MatrixR>::value || !requires_evaluation<MatrixR>::value,
+        
+        // vectorization available
+        IsVectorizable = MatrixL::traits::IsVectorizable,
     };
     
     enum costs {
-        Temp_Cost = 1,
-        Op_CostL = IsContainerL == 1 ? 0 : MatrixL::costs::Op_Cost,
-        Op_CostR = (IsContainerR == 1 && IsContainerL == 0) ? Temp_Cost + MatrixR::costs::Op_Cost : MatrixR::costs::Op_Cost, //because we're doing like A*B-C instead of C-A*B we incur a temporary cost
-        Op_Cost_Flops = RowsAtCompileTime * ColsAtCompileTime,
-        Op_Cost = Op_Cost_Flops + Op_CostL + Op_CostR,
+        // cost associated with this expression
+        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime,
+        AddCost = num_traits<value_type>::AddCost * SizeAtCompileTime,
+        MultCost = 0, // not a multiply expression
+        
+        // total nested cost associated with MatrixL
+        Op_CostL = MatrixL::costs::Op_Cost,
+        // total nested cost associated with MatrixL
+        Op_CostR = MatrixR::costs::Op_Cost,
+        
+        // if MatrixR can be moved to the left side and then moved don't include the cost (Ultimately just ReadCost).
+        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostL : Op_CostR + AddCost,
     };
  
     explicit Matrix_Sum(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -316,16 +335,29 @@ public:
         // this is the resulting size of the expression, matrix sum operation so sizes are compatible
         RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime,
         ColsAtCompileTime = MatrixL::traits::ColsAtCompileTime,
-        IsContainerL = is_matrix_container<MatrixL>::value, // container or doesn't require evaluation
-        IsContainerR = is_matrix_container<MatrixR>::value,
+        SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
+        
+        // container or doesn't require evaluation
+        IsContainerL = is_matrix_container<MatrixL>::value || !requires_evaluation<MatrixL>::value,
+        IsContainerR = is_matrix_container<MatrixR>::value || !requires_evaluation<MatrixR>::value,
+        
+        // vectorization available
+        IsVectorizable = MatrixL::traits::IsVectorizable,
     };
     
     enum costs {
-        Temp_Cost = 1,
-        Op_CostL = IsContainerL == 1 ? 0 : MatrixL::costs::Op_Cost,
-        Op_CostR = (IsContainerR == 1 && IsContainerL == 0) ? Temp_Cost + MatrixR::costs::Op_Cost : MatrixR::costs::Op_Cost, //because we're doing like A*B-C instead of C-A*B we incur a temporary cost
-        Op_Cost_Flops = RowsAtCompileTime * ColsAtCompileTime,
-        Op_Cost = Op_Cost_Flops + Op_CostL + Op_CostR,
+        // cost associated with this expression
+        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime,
+        AddCost = num_traits<value_type>::AddCost * SizeAtCompileTime,
+        MultCost = 0, // not a multiply expression
+        
+        // total nested cost associated with MatrixL
+        Op_CostL = MatrixL::costs::Op_Cost,
+        // total nested cost associated with MatrixL
+        Op_CostR = MatrixR::costs::Op_Cost,
+        
+        // if MatrixR can be moved to the left side and then moved don't include the cost (Ultimately just ReadCost).
+        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostL : Op_CostR + AddCost,
     };
     
 	explicit Matrix_Difference(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -353,16 +385,25 @@ public:
         // this is the resulting size of the expression, matrix product operation (m x n)*(n x p) ~ (m x p)
         RowsAtCompileTime = MatrixL::traits::RowsAtCompileTime,
         ColsAtCompileTime = MatrixR::traits::ColsAtCompileTime,
-        IsContainerL = is_matrix_container<MatrixL>::value, // container or doesn't require evaluation
-        IsContainerR = is_matrix_container<MatrixR>::value,
+        SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
+        
+        // vectorization available
+        IsVectorizable = MatrixL::traits::IsVectorizable,
     };
     
     enum costs {
-        Temp_Cost = 1,
+        // cost associated with this expression
+        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime,
+        AddCost = 0, // not a multiply expression
+        MultCost = num_traits<value_type>::MultCost * SizeAtCompileTime,
+        
+        // total nested cost associated with MatrixL
         Op_CostL = MatrixL::costs::Op_Cost,
+        // total nested cost associated with MatrixL
         Op_CostR = MatrixR::costs::Op_Cost,
-        Op_Cost_Flops = RowsAtCompileTime * ColsAtCompileTime * (2 * ColsAtCompileTime - 1),
-        Op_Cost = Op_Cost_Flops + Op_CostL + Op_CostR,
+        
+        // Multiplication is non-commutative so the cost should represent this
+        Op_Cost = Op_CostL + Op_CostR + MultCost,
     };
  
     explicit Matrix_Product(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -643,11 +684,11 @@ class Tree_Optimizer {
 public:
     
     typedef MatXpr ReturnType;
-    
+    /*
     enum {
         Cost = MatXpr::costs::Op_Cost
     };
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         return mxpr;
     }
@@ -659,11 +700,11 @@ class Tree_Optimizer< Dense_Matrix<rows, cols> > {
 public:
     
     typedef Dense_Matrix<rows, cols> ReturnType;
-    
+    /*
     enum {
         Cost = Dense_Matrix<rows, cols>::costs::Op_Cost
     };
-    
+    */
     static const ReturnType& build(const Dense_Matrix<rows, cols>& mxpr) { return mxpr; }
     
 };
@@ -677,11 +718,11 @@ public:
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
     typedef Matrix_Sum<NMatA, NMatB> ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Sum<A, B>::costs::Op_Cost
     };
-   
+     */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) + Tree_Optimizer<B>::build(mxpr.matrixr);
     }
@@ -697,11 +738,11 @@ public:
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
     typedef Matrix_Difference<NMatA, NMatB> ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Difference<A, B>::costs::Op_Cost
     };
-  
+     */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) - Tree_Optimizer<B>::build(mxpr.matrixr);
     }
@@ -716,11 +757,11 @@ public:
     typedef typename Tree_Optimizer<A>::ReturnType NMatA;
     typedef typename Tree_Optimizer<B>::ReturnType NMatB;
     typedef Matrix_Product<NMatA, NMatB> ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Product<A, B>::costs::Op_Cost
     };
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<A>::build(mxpr.matrixl) * Tree_Optimizer<B>::build(mxpr.matrixr);
     }
@@ -736,11 +777,11 @@ public:
     typedef Matrix_Sum<Matrix_Product<A, B>, C> MatXpr;
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Sum< Matrix_Product<A, B>, C>::costs::Op_Cost
     };
-
+     */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
     }
@@ -756,11 +797,11 @@ public:
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef typename Tree_Optimizer<D>::ReturnType NMatD;
     typedef Matrix_Sum< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Sum< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
     };
-
+     */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
     }
@@ -775,11 +816,11 @@ public:
     typedef Matrix_Difference<Matrix_Product<A, B>, C> MatXpr;
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef Matrix_Sum<NMatC, Matrix_Product<A, B> > ReturnType;
-    
+    /*
     enum {
-        Cost = Matrix_Sum< Matrix_Product<A, B>, C>::costs::Op_Cost
+        Cost = Matrix_Difference< Matrix_Product<A, B>, C>::costs::Op_Cost
     };
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         // there is a sign issue here!
         return Tree_Optimizer<C>::build(mxpr.matrixr) + mxpr.matrixl;
@@ -796,11 +837,11 @@ public:
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef typename Tree_Optimizer<D>::ReturnType NMatD;
     typedef Matrix_Sum< Matrix_Difference<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Difference< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
     };
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) - Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
     }
@@ -816,11 +857,11 @@ public:
     typedef typename Tree_Optimizer<C>::ReturnType NMatC;
     typedef typename Tree_Optimizer<D>::ReturnType NMatD;
     typedef Matrix_Difference< Matrix_Sum<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
-    
+    /*
     enum {
         Cost = Matrix_Difference< Matrix_Sum<C, Matrix_Product<A, B> >, D>::costs::Op_Cost
     };
-    
+    */
     static ReturnType build(const MatXpr& mxpr) {
         return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) + Tree_Optimizer<D>::build(mxpr.matrixr) - mxpr.matrixl.matrixr;
     }
@@ -959,7 +1000,7 @@ int main(){
 	Matrix4d A("A"), B("B"), C("C"), D("D");
     Vector4d a("a"), b("b"), c("c"), d("d");
     std::cout << "\n";
-    
+/*
     std::cout << "D = A * B + C; \n";
     D = A * B + C;
     std::cout << "\n";
@@ -979,7 +1020,7 @@ int main(){
     auto result = tree_optimizer::optimize(xpr);
     std::cout << "after name: " << result.name() << "\n";
     std::cout << "result? " << typeid(result).name() << "\n";
-    
+
     std::cout << "\n\n";
     auto xpr2 = A * B + C;
     std::cout << "before name: " << xpr2.name() << "\n";
@@ -992,11 +1033,11 @@ int main(){
     auto result2 = tree_optimizer2::optimize(xpr2);
     std::cout << "after name: " << result2.name() << "\n";
     std::cout << "result? " << typeid(result2).name() << "\n";
-    
+*/
     std::cout << "\n" << "Is the cost minimized? " << "\n";
-    std::cout << (A * B + C).name() << " " << (C + A * B).name() << "\n\n";
+    std::cout << (A * B + C).name() << " -> " << (C + A * B).name() << "\n\n";
     std::cout << decltype(A * B + C)::Op_Cost << " " << decltype(C + A * B)::Op_Cost << "\n\n";
-    
+/*
     auto xpr3 = A * B + C + D;
     std::cout << "before name: " << xpr3.name() << "\n";
     typedef expression_types2< 5, decltype(xpr3) >::type sequence2;
@@ -1008,7 +1049,7 @@ int main(){
     auto result3 = tree_optimizer3::optimize(xpr3);
     std::cout << "after name: " << result3.name() << "\n";
     std::cout << "result? " << typeid(result3).name() << "\n";
-    
+
     std::cout << "\n\n";
     auto xpr4 = A * B + C + D;
     std::cout << "before name: " << xpr4.name() << "\n";
@@ -1021,18 +1062,19 @@ int main(){
     auto result4 = tree_optimizer4::optimize(xpr4);
     std::cout << "after name: " << result4.name() << "\n";
     std::cout << "result? " << typeid(result4).name() << "\n";
-    
+*/
+
     std::cout << "\n" << "Is the cost minimized? " << "\n";
-    std::cout << (A * B + C + D).name() << " " << (D + A * B + C).name() << " " << (C + D + A * B).name() << "\n\n";
+    std::cout << (A * B + C + D).name() << " -> " << (D + A * B + C).name() << " -> " << (C + D + A * B).name() << "\n\n";
     std::cout << decltype(A * B + C + D)::Op_Cost << " " << decltype(D + A * B + C)::Op_Cost << " " << decltype(C + D + A * B)::Op_Cost << "\n\n";
-    
+
     auto xpr5 = A * B + C - D;
     std::cout << "before name: " << xpr5.name() << "\n";
     Tree_Optimizer<decltype(xpr5)>::ReturnType result5 = Tree_Optimizer<decltype(xpr5)>::build(xpr5);
     std::cout << "after name: " << result5.name() << "\n";
     
     std::cout << "\n" << "Is the cost minimized? " << "\n";
-    std::cout << decltype(C - A * B + D)::Op_Cost << " " << decltype(C - A * B + D)::Op_Cost << "\n\n";
+    std::cout << decltype(A * B + C - D)::Op_Cost << " " << decltype(C - A * B + D)::Op_Cost << "\n\n";
 
  	return 0;
 }
