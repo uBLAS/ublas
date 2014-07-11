@@ -310,7 +310,7 @@ public:
         Op_CostR = MatrixR::costs::Op_Cost,
         
         // if MatrixR can be moved to the left side and then moved don't include the cost (Ultimately just ReadCost).
-        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostL : Op_CostR + AddCost,
+        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostR : Op_CostR + AddCost,
     };
  
     explicit Matrix_Sum(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -357,7 +357,7 @@ public:
         Op_CostR = MatrixR::costs::Op_Cost,
         
         // if MatrixR can be moved to the left side and then moved don't include the cost (Ultimately just ReadCost).
-        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostL : Op_CostR + AddCost,
+        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostR : Op_CostR + AddCost,
     };
     
 	explicit Matrix_Difference(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -1000,7 +1000,7 @@ int main(){
 	Matrix4d A("A"), B("B"), C("C"), D("D");
     Vector4d a("a"), b("b"), c("c"), d("d");
     std::cout << "\n";
-/*
+
     std::cout << "D = A * B + C; \n";
     D = A * B + C;
     std::cout << "\n";
@@ -1033,11 +1033,11 @@ int main(){
     auto result2 = tree_optimizer2::optimize(xpr2);
     std::cout << "after name: " << result2.name() << "\n";
     std::cout << "result? " << typeid(result2).name() << "\n";
-*/
+
     std::cout << "\n" << "Is the cost minimized? " << "\n";
     std::cout << (A * B + C).name() << " -> " << (C + A * B).name() << "\n\n";
     std::cout << decltype(A * B + C)::Op_Cost << " " << decltype(C + A * B)::Op_Cost << "\n\n";
-/*
+
     auto xpr3 = A * B + C + D;
     std::cout << "before name: " << xpr3.name() << "\n";
     typedef expression_types2< 5, decltype(xpr3) >::type sequence2;
@@ -1062,7 +1062,6 @@ int main(){
     auto result4 = tree_optimizer4::optimize(xpr4);
     std::cout << "after name: " << result4.name() << "\n";
     std::cout << "result? " << typeid(result4).name() << "\n";
-*/
 
     std::cout << "\n" << "Is the cost minimized? " << "\n";
     std::cout << (A * B + C + D).name() << " -> " << (D + A * B + C).name() << " -> " << (C + D + A * B).name() << "\n\n";
@@ -1074,7 +1073,7 @@ int main(){
     std::cout << "after name: " << result5.name() << "\n";
     
     std::cout << "\n" << "Is the cost minimized? " << "\n";
-    std::cout << decltype(A * B + C - D)::Op_Cost << " " << decltype(C - A * B + D)::Op_Cost << "\n\n";
+    std::cout << decltype(A * B + C - D)::Op_Cost << " " << decltype(C + A * B - D)::Op_Cost << " " << decltype(C - D + A * B)::Op_Cost << "\n\n";
 
  	return 0;
 }
