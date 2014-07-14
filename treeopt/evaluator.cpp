@@ -284,7 +284,7 @@ public:
         Op_Cost = ReadCost,
     };
 
-    Dense_Matrix(const std::string& name) : m_name(name), _rows(Rows), _cols(Cols) {
+    inline Dense_Matrix(const std::string& name) : m_name(name), _rows(Rows), _cols(Cols) {
         std::vector<value_type> row(_cols);
         _data.resize(_rows, row);
         if(_rows == 1 || _cols == 1){
@@ -293,7 +293,7 @@ public:
         else { std::cout << "- Create matrix " << m_name << std::endl; }
     }
     
-    Dense_Matrix(value_type c) : _rows(Rows), _cols(Cols) { // initializer constructor
+    inline Dense_Matrix(value_type c) : _rows(Rows), _cols(Cols) { // initializer constructor
         std::vector<value_type> row(_cols, c);
         _data.resize(_rows, row);
     }
@@ -341,9 +341,9 @@ public:
         Op_Cost = 0,
     };
     
-    explicit Scalar_Multiple(const Matrix_Expression<MatXpr>& mat) : matrix(mat) { }
+    explicit inline Scalar_Multiple(const Matrix_Expression<MatXpr>& mat) : matrix(mat) { }
     
-    std::string name() const { return std::string("(scalar multiple of ") + matrix.name() + ")"; }
+    inline std::string name() const { return std::string("(scalar multiple of ") + matrix.name() + ")"; }
     
     typename MatXpr::Nested& matrix;
     
@@ -372,9 +372,9 @@ public:
         Op_Cost = 0,
     };
     
-    explicit Transpose(const Matrix_Expression<MatXpr>& mat) : matrix(mat) { }
+    explicit inline Transpose(const Matrix_Expression<MatXpr>& mat) : matrix(mat) { }
     
-    std::string name() const { return std::string("(Transpose of ") + matrix.name() + ")"; }
+    inline std::string name() const { return std::string("(Transpose of ") + matrix.name() + ")"; }
     
     constexpr inline size_t rows() const { return matrix.rows(); }
     
@@ -423,9 +423,9 @@ public:
         Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostR : Op_CostR + AddCost,
     };
  
-    explicit Matrix_Sum(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
+    explicit inline Matrix_Sum(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
-    std::string name() const { return std::string("(") + matrixl.name() + " + " + matrixr.name() + ")"; }
+    inline std::string name() const { return std::string("(") + matrixl.name() + " + " + matrixr.name() + ")"; }
 
     typename MatrixL::Nested matrixl;
     typename MatrixR::Nested matrixr;
@@ -470,11 +470,11 @@ public:
         Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostR : Op_CostR + AddCost,
     };
     
-	explicit Matrix_Difference(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
+	explicit inline Matrix_Difference(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
 	~Matrix_Difference() {}
     
-	std::string name() const { return std::string("(") + matrixl.name() + " - " + matrixr.name() + ")"; }
+	inline std::string name() const { return std::string("(") + matrixl.name() + " - " + matrixr.name() + ")"; }
     
     typename MatrixL::Nested matrixl;
     typename MatrixR::Nested matrixr;
@@ -519,9 +519,9 @@ public:
         Op_Cost = IsProductL == 1 ? Op_CostL + Op_CostR + MultCost + 1 : Op_CostL + Op_CostR + MultCost,
     };
  
-    explicit Matrix_Product(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
+    explicit inline Matrix_Product(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
-    std::string name() const { return std::string("(") + matrixl.name() + " * " + matrixr.name() + ")"; }
+    inline std::string name() const { return std::string("(") + matrixl.name() + " * " + matrixr.name() + ")"; }
     
     typename MatrixL::Nested matrixl;
 	typename MatrixR::Nested matrixr;
@@ -1224,7 +1224,7 @@ int main(){
     std::cout << "result? " << typeid(result7).name() << "\n\n";
  
     B = A * -1.0;
-    A *= -1.0;    
+    A *= -1.0;
     A.transpose_in_place();
     
  	return 0;
