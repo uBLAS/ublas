@@ -1229,7 +1229,7 @@ int main(){
     
     std::cout << "\n\n";
     std::cout << "Testing a complicated expression.. \n";
-    auto mxpr = A * B + C - D + A * C;
+    auto mxpr = A * B + C - D + A * C + D - A + A;
     
     typedef decltype(mxpr) Xpr;
     std::cout << "init version:";
