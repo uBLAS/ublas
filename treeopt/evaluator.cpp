@@ -952,7 +952,7 @@ public:
     typedef Matrix_Sum< Matrix_Difference<NMatC, NMatD>, Matrix_Product<A, B> > ReturnType;
     
     static ReturnType build(const MatXpr& mxpr) {
-        return Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) - Tree_Optimizer<D>::build(mxpr.matrixr) + mxpr.matrixl.matrixr;
+        return (Tree_Optimizer<C>::build(mxpr.matrixl.matrixl) - Tree_Optimizer<D>::build(mxpr.matrixr)) + mxpr.matrixl.matrixr;
     }
     
 };
@@ -1227,5 +1227,32 @@ int main(){
     A *= -1.0;
     A.transpose_in_place();
     
+    std::cout << "\n\n";
+    std::cout << "Testing a complicated expression.. \n";
+    auto mxpr = A * B + C - D + A;
+    
+    typedef decltype(mxpr) Xpr;
+    std::cout << "init version:";
+    std::cout << " " << mxpr.name() << "\n";
+    std::cout << "cost " << mxpr.Op_Cost << "\n";
+    
+    Tree_Optimizer<Xpr>::ReturnType mxpr1 = Tree_Optimizer<Xpr>::build(mxpr);
+    typedef decltype(mxpr1) Xpr1;
+    std::cout << std::endl << "optimized version 1:";
+    std::cout << " " << mxpr1.name() << std::endl;
+    std::cout << "cost " << mxpr1.Op_Cost << std::endl;
+    
+    Tree_Optimizer<Xpr1>::ReturnType mxpr2 = Tree_Optimizer<Xpr1>::build(mxpr1);
+    typedef decltype(mxpr2) Xpr2;
+    std::cout << std::endl << "optimized version 2:";
+    std::cout << " " << mxpr2.name() << std::endl;
+    std::cout << "cost " << mxpr2.Op_Cost << std::endl;
+    
+    Tree_Optimizer<Xpr2>::ReturnType mxpr3 = Tree_Optimizer<Xpr2>::build(mxpr2);
+    typedef decltype(mxpr3) Xpr3;
+    std::cout << std::endl << "optimized version 3:";
+    std::cout << " " << mxpr3.name() << std::endl;
+    std::cout << "cost " << mxpr3.Op_Cost << std::endl;
+
  	return 0;
 }
