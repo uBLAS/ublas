@@ -278,10 +278,10 @@ public:
     };
     
     enum costs {
-        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime, // because it's just an matrix we only have a read cost associated with this expression
+        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime,
         AddCost = 0,
         MultCost = 0,
-        Op_Cost = ReadCost,
+        Op_Cost = 0,
     };
 
     inline Dense_Matrix(const std::string& name) : m_name(name), _rows(Rows), _cols(Cols) {
@@ -336,9 +336,9 @@ public:
         // cost associated with this expression
         ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime,
         AddCost = 0,
-        MultCost = 0,
+        MultCost = num_traits<value_type>::MultCost * traits::SizeAtCompileTime,
         
-        Op_Cost = 0,
+        Op_Cost = ReadCost + MultCost,
     };
     
     explicit inline Scalar_Multiple(const Matrix_Expression<MatXpr>& mat) : matrix(mat) { }
@@ -369,7 +369,7 @@ public:
         AddCost = 0,
         MultCost = 0,
         
-        Op_Cost = 0,
+        Op_Cost = ReadCost,
     };
     
     explicit inline Transpose(const Matrix_Expression<MatXpr>& mat) : matrix(mat) { }
@@ -401,8 +401,8 @@ public:
         SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
         
         // container or doesn't require evaluation
-        IsContainerL = is_matrix_container<MatrixL>::value || !requires_evaluation<MatrixL>::value,
-        IsContainerR = is_matrix_container<MatrixR>::value || !requires_evaluation<MatrixR>::value,
+        IsContainerL = is_matrix_container<MatrixL>::value, // || !requires_evaluation<MatrixL>::value,
+        IsContainerR = is_matrix_container<MatrixR>::value, // || !requires_evaluation<MatrixR>::value,
         
         // vectorization available
         IsVectorizable = MatrixL::traits::IsVectorizable,
@@ -415,14 +415,14 @@ public:
         MultCost = 0, // not a multiply expression
         
         // total nested cost associated with MatrixL
-        Op_CostL = MatrixL::costs::Op_Cost,
-        // total nested cost associated with MatrixL
-        Op_CostR = MatrixR::costs::Op_Cost,
+        Op_CostL = IsContainerL == 1 ? 0 : MatrixL::costs::Op_Cost,
+        // total nested cost associated with MatrixR
+        Op_CostR = IsContainerR == 1 ? MatrixR::costs::ReadCost : MatrixR::costs::Op_Cost,
         
         // if MatrixR can be moved to the left side and then moved don't include the cost (Ultimately just ReadCost).
-        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostR : Op_CostR + AddCost,
+        Op_Cost = Op_CostL + Op_CostR + AddCost + ReadCost,
     };
- 
+    
     explicit inline Matrix_Sum(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
     inline std::string name() const { return std::string("(") + matrixl.name() + " + " + matrixr.name() + ")"; }
@@ -448,8 +448,8 @@ public:
         SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
         
         // container or doesn't require evaluation
-        IsContainerL = is_matrix_container<MatrixL>::value || !requires_evaluation<MatrixL>::value,
-        IsContainerR = is_matrix_container<MatrixR>::value || !requires_evaluation<MatrixR>::value,
+        IsContainerL = is_matrix_container<MatrixL>::value, // || !requires_evaluation<MatrixL>::value,
+        IsContainerR = is_matrix_container<MatrixR>::value, // || !requires_evaluation<MatrixR>::value,
         
         // vectorization available
         IsVectorizable = MatrixL::traits::IsVectorizable,
@@ -462,12 +462,12 @@ public:
         MultCost = 0, // not a multiply expression
         
         // total nested cost associated with MatrixL
-        Op_CostL = MatrixL::costs::Op_Cost,
-        // total nested cost associated with MatrixL
-        Op_CostR = MatrixR::costs::Op_Cost,
+        Op_CostL = IsContainerL == 1 ? 0 : MatrixL::costs::Op_Cost,
+        // total nested cost associated with MatrixR
+        Op_CostR = IsContainerR == 1 ? MatrixR::costs::ReadCost : MatrixR::costs::Op_Cost,
         
         // if MatrixR can be moved to the left side and then moved don't include the cost (Ultimately just ReadCost).
-        Op_Cost = IsContainerR == 1 ? Op_CostL + AddCost + Op_CostR : Op_CostR + AddCost,
+        Op_Cost = Op_CostL + Op_CostR + AddCost + ReadCost,
     };
     
 	explicit inline Matrix_Difference(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
@@ -506,9 +506,9 @@ public:
     
     enum costs {
         // cost associated with this expression
-        ReadCost = num_traits<value_type>::ReadCost * traits::SizeAtCompileTime,
+        ReadCost = num_traits<value_type>::ReadCost, // * traits::SizeAtCompileTime,
         AddCost = 0, // not a multiply expression
-        MultCost = num_traits<value_type>::MultCost * SizeAtCompileTime,
+        MultCost = num_traits<value_type>::MultCost, // * SizeAtCompileTime,
         
         // total nested cost associated with MatrixL
         Op_CostL = MatrixL::costs::Op_Cost,
@@ -518,7 +518,7 @@ public:
         // Multiplication is non-commutative so the cost should represent this
         Op_Cost = IsProductL == 1 ? Op_CostL + Op_CostR + MultCost + 1 : Op_CostL + Op_CostR + MultCost,
     };
- 
+    
     explicit inline Matrix_Product(const Matrix_Expression<MatrixL>& ml, const Matrix_Expression<MatrixR>& mr) : matrixl(ml), matrixr(mr) {}
     
     inline std::string name() const { return std::string("(") + matrixl.name() + " * " + matrixr.name() + ")"; }
@@ -926,6 +926,22 @@ public:
     
 };
 
+// catch (A * B) + C + D and builds (C + D) + (A * B)
+template<typename A, typename B, typename C, typename D>
+class Tree_Optimizer< Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> > {
+public:
+    
+    typedef Matrix_Sum< Matrix_Sum< Matrix_Product<A, B>, C>, D> MatXpr;
+    typedef typename Tree_Optimizer<C>::ReturnType NMatC;
+    typedef typename Tree_Optimizer<D>::ReturnType NMatD;
+    typedef Matrix_Sum<Matrix_Sum<NMatC, NMatD>, Matrix_Product<A,B> > ReturnType;
+    
+    static ReturnType build(const MatXpr& mxpr) {
+        return Tree_Optimizer<C>::build(mxpr.matrixl.matrixr) + Tree_Optimizer<D>::build(mxpr.matrixr) + Tree_Optimizer<Matrix_Product<A, B>>::build(mxpr.matrixl.matrixl);
+    }
+};
+
+
 // catch A * B - C and builds -C + A * B
 template<typename A, typename B, typename C>
 class Tree_Optimizer< Matrix_Difference< Matrix_Product<A, B>, C> > {
@@ -1150,7 +1166,7 @@ int main(){
     std::cout << "test size = " << mpl::size<test>::value << "\n";
     boost::mpl::for_each<test, boost::mpl::make_identity<> > (print());
     std::cout << "\n\n";
-    
+
     typedef to_variadic< test >::type tree_optimizer2;
     auto result2 = tree_optimizer2::optimize(xpr2);
     std::cout << "after name: " << result2.name() << "\n";
@@ -1229,7 +1245,7 @@ int main(){
     
     std::cout << "\n\n";
     std::cout << "Testing a complicated expression.. \n";
-    auto mxpr = A * B + C - D + A * C + D - A + A;
+    auto mxpr = A * B + C - D + A * C + D - A + A * B * D - C;
     
     typedef decltype(mxpr) Xpr;
     std::cout << "init version:";
@@ -1253,6 +1269,18 @@ int main(){
     std::cout << std::endl << "optimized version 3:";
     std::cout << " " << mxpr3.name() << std::endl;
     std::cout << "cost " << mxpr3.Op_Cost << std::endl;
+    
+    Tree_Optimizer<Xpr3>::ReturnType mxpr4 = Tree_Optimizer<Xpr3>::build(mxpr3);
+    typedef decltype(mxpr4) Xpr4;
+    std::cout << std::endl << "optimized version 4:";
+    std::cout << " " << mxpr4.name() << std::endl;
+    std::cout << "cost " << mxpr4.Op_Cost << std::endl;
+    
+    Tree_Optimizer<Xpr4>::ReturnType mxpr5 = Tree_Optimizer<Xpr4>::build(mxpr4);
+    typedef decltype(mxpr5) Xpr5;
+    std::cout << std::endl << "optimized version 5:";
+    std::cout << " " << mxpr5.name() << std::endl;
+    std::cout << "cost " << mxpr5.Op_Cost << std::endl;
 
  	return 0;
 }
