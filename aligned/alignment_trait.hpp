@@ -1,21 +1,25 @@
-/*
-    Trying out some ideas from Eigen3 and Blaze-lib
-    https://code.google.com/p/blaze-lib/
-    http://eigen.tuxfamily.org/index.php?title=Main_Page
-*/
 
+#ifndef BOOST_NUMERIC_UBLAS_TRAITS_ALIGNMENTTRAIT_HPP_
+#define BOOST_NUMERIC_UBLAS_TRAITS_ALIGNMENTTRAIT_HPP_
 
-#ifndef ALIGNMENT_TRAIT_HPP_
-#define ALIGNMENT_TRAIT_HPP_
-
+#include <boost/type_traits/alignment_of.hpp>
+#include <boost/static_assert.hpp>
 #include <boost/type_traits.hpp>
 
-#define UBLAS_USE_VECTORIZATION 1
+namespace boost { namespace numeric { namespace ublas {
+    
+#define UBLAS_USE_VECTORIZATION 1 // vectorization is the default option
 
-#if UBLAS_USE_VECTORIZATION && ( defined(__SSE4_1__) || defined(__SSE4_2__) || defined(__SSSE3__) )
-#define UBLAS_HAS_SSE 1
+#if UBLAS_USE_VECTORIZATION && defined(__SSSE3__)
+#define UBLAS_HAS_SSE3 1
 #else
-#define UBLAS_HAS_SSE 0
+#define UBLAS_HAS_SSE3 0
+#endif
+    
+#if UBLAS_USE_VECTORIZATION && ( defined(__SSE4_1__) || defined(__SSE4_2__) )
+#define UBLAS_HAS_SSE4 1
+#else
+#define UBLAS_HAS_SSE4 0
 #endif
 
 #if UBLAS_USE_VECTORIZATION && ( defined(__AVX__) || defined(__AVX2__) )
@@ -67,7 +71,8 @@ struct is_numeric<double> {
 template <typename T>
 struct is_vectorizable {
     enum {
-        value = ( UBLAS_HAS_SSE  && ( is_numeric<T>::value ) ) ||
+        value = ( UBLAS_HAS_SSE3  && ( is_numeric<T>::value ) ) ||
+        ( UBLAS_HAS_SSE4  && ( is_numeric<T>::value ) ) ||
         ( UBLAS_HAS_AVX && ( is_numeric<T>::value ) )
     };
     typedef typename select_type<value, boost::true_type, boost::false_type>::type  type;
@@ -120,5 +125,8 @@ struct alignment_trait<double> {
     enum { value = boost::alignment_of<double>::value };
 #endif
 };
+
+    
+} } } // Namespace boost::numeric::ublas
 
 #endif
