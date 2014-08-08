@@ -21,6 +21,7 @@ namespace boost { namespace numeric { namespace ublas {
            "inline" is used for ignore_unused_variable_warning()
            to make sure there is no overhead with g++.
          */
+        
         template <class T> inline
         void ignore_unused_variable_warning(const T&) {}
     } // namespace detail

@@ -275,7 +275,7 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Serialization
         template<class Archive>
-        void serialize(Archive & ar, const unsigned int version)
+        void serialize(Archive & ar, const unsigned int /*version*/)
         { 
             serialization::collection_size_type s(size_);
             ar & serialization::make_nvp("size",s);
@@ -453,7 +453,7 @@ namespace boost { namespace numeric { namespace ublas {
         friend class boost::serialization::access;
 
         template<class Archive>
-        void serialize(Archive & ar, const unsigned int version)
+        void serialize(Archive & ar, const unsigned int /*version*/)
         {
             serialization::collection_size_type s(size_);
             ar & serialization::make_nvp("size", s);
@@ -473,9 +473,9 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_BOUNDED_ARRAY_ALIGN value_type data_ [N];
 #endif
     };
-
+    
     // Aligned array - with boost aligned_allocator
-    template<typename T, std::size_t N, size_t Alignment = alignment_trait<T>::value >
+    template<typename T, std::size_t N, size_t Alignment >
     class aligned_array:
     public storage_array< aligned_array<T, N, Alignment> > {
         
@@ -494,27 +494,34 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Construction and destruction
         explicit BOOST_UBLAS_INLINE
-        aligned_array() : alloc_ (allocator_type()), size_ (N) {
-            if (size_) {
-                data_ = alloc_.allocate (size_);
-                if (! detail::has_trivial_constructor<T>::value) {
-                    for (pointer d = data_; d != data_ + size_; ++d)
-                        alloc_.construct(d, value_type());
-                }
-            }
-            else {
-                data_ = nullptr;
+        aligned_array() : alloc_ (allocator_type()), size_(N) {
+            data_ = alloc_.allocate (N);
+            if(!detail::has_trivial_constructor<T>::value) {
+                for(pointer d = data_; d != data_ + size_; ++d)
+                    alloc_.construct(d, value_type());
             }
         }
+        
         BOOST_UBLAS_INLINE
-        aligned_array(const value_type& init) : alloc_ (allocator_type()), size_ (N) {
-            data_ = alloc_.allocate (size_);
+        aligned_array(const std::initializer_list<value_type>& init) : storage_array<self_type> () {
+            data_ = alloc_.allocate (init.size());
+            std::copy(init.begin(), init.end(), begin());
+        }
+        
+        BOOST_UBLAS_INLINE
+        aligned_array(const value_type& init) : alloc_ (allocator_type()), size_(N) {
+            data_ = alloc_.allocate (N);
             std::fill(begin(), end(), init) ;
         }
         BOOST_UBLAS_INLINE
         aligned_array(const aligned_array& c) : alloc_ (c.alloc_), size_ (c.size_)  {
             data_ = alloc_.allocate (size_);
             std::copy(c.begin(), c.end(), begin());
+        }
+        BOOST_UBLAS_INLINE
+        aligned_array(size_type size, const value_type& init) : alloc_ (allocator_type()), size_(size) {
+            data_ = alloc_.allocate (size_);
+            std::fill(begin(), end(), init);
         }
         BOOST_UBLAS_INLINE
         ~aligned_array() {
@@ -530,32 +537,33 @@ namespace boost { namespace numeric { namespace ublas {
         
         BOOST_UBLAS_INLINE
         size_type size () const {
-            return size_;
+            return N;
         }
         
         // Element access
         BOOST_UBLAS_INLINE
-        const_reference operator [] (size_type i) const {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+        const_reference operator [] (size_type i) const { 
+            BOOST_UBLAS_CHECK (i < size(), bad_index ());
             return data_ [i];
         }
         BOOST_UBLAS_INLINE
         reference operator [] (size_type i) {
-            BOOST_UBLAS_CHECK (i < size_, bad_index ());
+            BOOST_UBLAS_CHECK (i < size(), bad_index ());
             return data_ [i];
         }
         
         // Assignment
         BOOST_UBLAS_INLINE
-        aligned_array &operator = (const aligned_array& a) {
+        aligned_array& operator = (const aligned_array& a) {
             if(this != &a) {
                 BOOST_UBLAS_CHECK(a.size_ == size_, bad_index ()); //should throw something other than bad_index()
+                size_ = a.size_;
                 std::copy (a.data_, a.data_ + a.size_, data_);
             }
             return *this;
         }
         BOOST_UBLAS_INLINE
-        aligned_array &assign_temporary (aligned_array& a) {
+        aligned_array& assign_temporary (aligned_array& a) {
             *this = a;
             return *this;
         }
@@ -613,12 +621,13 @@ namespace boost { namespace numeric { namespace ublas {
         }
         
     private:
-       
+        
         allocator_type alloc_;
         size_type size_;
         pointer data_;
         
     };
+
 
     // Array adaptor with normal deep copy semantics of elements
     template<class T>
@@ -1754,10 +1763,16 @@ namespace boost { namespace numeric { namespace ublas {
             rhs = *this;
             *this = tmp;
         }
+
         BOOST_UBLAS_INLINE
         friend void swap(self_type& lhs, self_type& rhs) {
             lhs.swap(rhs);
         }
+
+        friend void swap(self_type lhs, self_type rhs) { // For gcc 4.8 and c++11
+            lhs.swap(rhs);
+        }
+
 
         BOOST_UBLAS_INLINE
         bool equal(const self_type& rhs) const {
@@ -1925,8 +1940,13 @@ namespace boost { namespace numeric { namespace ublas {
             rhs = *this;
             *this = tmp;
         }
+
         BOOST_UBLAS_INLINE
         friend void swap(self_type& lhs, self_type& rhs) {
+            lhs.swap(rhs);
+        }
+
+        friend void swap(self_type lhs, self_type rhs) { // For gcc 4.8 and c++11
             lhs.swap(rhs);
         }
 

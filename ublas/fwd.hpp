@@ -16,6 +16,12 @@
 #define BOOST_UBLAS_FWD_H
 
 #include <memory>
+#include <boost/align/aligned_allocator.hpp>
+#include <boost/numeric/ublas/traits/alignment_trait.hpp>
+
+#ifdef BOOST_UBLAS_CPP_GE_2011
+#include <array>
+#endif
 
 namespace boost { namespace numeric { namespace ublas {
 
@@ -25,6 +31,9 @@ namespace boost { namespace numeric { namespace ublas {
 
     template<class T, std::size_t N, class ALLOC = std::allocator<T> >
     class bounded_array;
+    
+    template<typename T, std::size_t N, size_t Alignment = alignment_trait<T>::value >
+    class aligned_array;
 
     template <class Z = std::size_t, class D = std::ptrdiff_t>
     class basic_range;
@@ -90,6 +99,10 @@ namespace boost { namespace numeric { namespace ublas {
 
     template<class T, class A = unbounded_array<T> >
     class vector;
+#ifdef BOOST_UBLAS_CPP_GE_2011
+    template<class T, std::size_t N, class A = aligned_array<T, N> >
+    class fixed_vector;
+#endif
     template<class T, std::size_t N>
     class bounded_vector;
 
@@ -127,11 +140,13 @@ namespace boost { namespace numeric { namespace ublas {
 
     template<class T, class L = row_major, class A = unbounded_array<T> >
     class matrix;
+#ifdef BOOST_UBLAS_CPP_GE_2011
+    template<class T, std::size_t M, std::size_t N, class L = row_major, class A = aligned_array<T, M * N> >
+    class fixed_matrix;
+#endif
     template<class T, std::size_t M, std::size_t N, class L = row_major>
     class bounded_matrix;
-    template<class T, std::size_t M, std::size_t N, class L = row_major>
-    class static_matrix;
-    
+
     template<class T = int, class ALLOC = std::allocator<T> >
     class identity_matrix;
     template<class T = int, class ALLOC = std::allocator<T> >
@@ -215,7 +230,7 @@ namespace boost { namespace numeric { namespace ublas {
     class compressed_matrix;
     template<class T, class L = row_major, std::size_t IB = 0, class IA = unbounded_array<std::size_t>, class TA = unbounded_array<T> >
     class coordinate_matrix;
-    
+
     // expression classes
     template<class E1, class E2, class F>
     class matrix_matrix_binary;
@@ -251,7 +266,7 @@ namespace boost { namespace numeric { namespace ublas {
     struct expression_types;
     template <typename xpr1, typename... Arguments>
     class Optimize;
-
+    
 }}}
 
 #endif

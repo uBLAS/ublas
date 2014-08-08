@@ -1,3 +1,12 @@
+//
+//  Copyright (c) 2014
+//  Mark Lingle, David Bellot
+//
+//  Distributed under the Boost Software License, Version 1.0. (See
+//  accompanying file LICENSE_1_0.txt or copy at
+//  http://www.boost.org/LICENSE_1_0.txt)
+//
+
 #include <algorithm>
 #include <iostream>
 #include <typeinfo>
@@ -32,29 +41,6 @@
 #include <boost/mpl/begin.hpp>
 #include <boost/mpl/end.hpp>
 #include <boost/mpl/reverse.hpp>
-#include <boost/fusion/container/list.hpp>
-#include <boost/fusion/include/list.hpp>
-#include <boost/fusion/container/list/list_fwd.hpp>
-#include <boost/fusion/include/list_fwd.hpp>
-#include <boost/fusion/container/vector.hpp>
-#include <boost/fusion/include/vector.hpp>
-#include <boost/fusion/container/vector/vector_fwd.hpp>
-#include <boost/fusion/include/vector_fwd.hpp>
-#include <boost/fusion/sequence/intrinsic/at.hpp>
-#include <boost/fusion/include/at.hpp>
-#include <boost/fusion/algorithm/transformation/push_back.hpp>
-#include <boost/fusion/include/push_back.hpp>
-#include <boost/fusion/iterator/next.hpp>
-#include <boost/fusion/sequence/intrinsic/at_c.hpp>
-#include <boost/fusion/include/at_c.hpp>
-#include <boost/fusion/algorithm/auxiliary/copy.hpp>
-#include <boost/fusion/include/copy.hpp>
-#include <boost/fusion/algorithm/transformation/push_back.hpp>
-#include <boost/fusion/include/push_back.hpp>
-#include <boost/fusion/algorithm/auxiliary/copy.hpp>
-#include <boost/fusion/include/copy.hpp>
-#include <boost/fusion/algorithm/transformation/clear.hpp>
-#include <boost/fusion/include/clear.hpp>
 
 #ifndef TREE_OPTIMIZER_HPP
 #define TREE_OPTIMIZER_HPP
@@ -65,6 +51,10 @@
 
 namespace boost { namespace numeric { namespace ublas {
     
+    // This is the maximum recursion depth for the mpl::vector expressions defined below.
+    // This is to limit the maximum number of expression reogranizations for possible edge cases or bugs.
+    #define MAX_RECURSION_DEPTH 5
+    
     /*
         Start with the tree optimizer classes.
     */
@@ -72,11 +62,11 @@ namespace boost { namespace numeric { namespace ublas {
     // These are some convenience typedefs to simply the construction of partial specializations in the tree optimizer classes.
     // Otherwise things get confusing very quickly!
     template <typename A, typename B>
-    using dmatrix_sum = matrix_matrix_binary<A, B, dmatdmatsum<A, B>>;
+    using dmatrix_sum = matrix_matrix_binary<A, B, dmatdmatsum<A, B> >;
     template <typename A, typename B>
-    using dmatrix_difference = matrix_matrix_binary<A, B, dmatdmatsub<A, B>>;
+    using dmatrix_difference = matrix_matrix_binary<A, B, dmatdmatsub<A, B> >;
     template <typename A, typename B>
-    using dmatrix_product = general_product<A, B, dmatdmatprod<A, B>>;
+    using dmatrix_product = general_product<A, B, dmatdmatprod<A, B> >;
 
     // Default tree optimizer that copies the expression by value
     template <typename A>
@@ -95,7 +85,7 @@ namespace boost { namespace numeric { namespace ublas {
         }
         
     };
-    
+
     // Tree optimizer for matrix that copies by reference
     // T the type of object stored in the matrix (like double, float, complex, etc...)
     // L the storage organization. It can be either row_major or column_major. Default is row_major
@@ -122,23 +112,23 @@ namespace boost { namespace numeric { namespace ublas {
     // M the number of rows
     // N the number of columns
     // L the storage organization. It can be either row_major or column_major. Default is row_major
-    template <typename T, std::size_t M, std::size_t N, typename L>
-    class tree_optimizer< static_matrix<T, M, N, L> > {
+    template <typename T, std::size_t M, std::size_t N, typename L, typename A>
+    class tree_optimizer< fixed_matrix<T, M, N, L, A> > {
         
     public:
-        typedef static_matrix<T, M, N, L> ReturnType;
+        typedef fixed_matrix<T, M, N, L, A> ReturnType;
         
         enum {
             treechanges = 0,
         };
         
         static BOOST_UBLAS_INLINE
-        const ReturnType& build(const static_matrix<T, M, N, L>& mxpr) {
+        const ReturnType& build(const fixed_matrix<T, M, N, L, A>& mxpr) {
             return mxpr;
         }
         
     };
-    
+
     // Needed to forward the optimizer to the children
     template <typename A, typename B>
     class tree_optimizer< dmatrix_sum<A, B> > {
@@ -152,16 +142,17 @@ namespace boost { namespace numeric { namespace ublas {
         typedef dmatrix_sum<New_A, New_B> ReturnType;
         
         enum {
-            treechanges = tree_optimizer<A>::treechanges || tree_optimizer<B>::treechanges,
+            treechanges = tree_optimizer<A>::treechanges
+            || tree_optimizer<B>::treechanges,
         };
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<A>::build( mxpr.expression1() ) + tree_optimizer<B>::build( mxpr.expression2() );
+            return tree_optimizer<A>::build( mxpr.mexpression1() ) + tree_optimizer<B>::build( mxpr.mexpression2() );
         }
         
     };
-    
+
     // Needed to forward the optimizer to the children
     template <typename A, typename B>
     class tree_optimizer< dmatrix_difference<A, B> > {
@@ -175,12 +166,13 @@ namespace boost { namespace numeric { namespace ublas {
         typedef dmatrix_difference<New_A, New_B> ReturnType;
         
         enum {
-            treechanges = tree_optimizer<A>::treechanges || tree_optimizer<B>::treechanges,
+            treechanges = tree_optimizer<A>::treechanges
+            || tree_optimizer<B>::treechanges,
         };
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<A>::build( mxpr.expression1() ) - tree_optimizer<B>::build( mxpr.expression2() );
+            return tree_optimizer<A>::build( mxpr.mexpression1() ) - tree_optimizer<B>::build( mxpr.mexpression2() );
         }
         
     };
@@ -198,12 +190,13 @@ namespace boost { namespace numeric { namespace ublas {
         typedef dmatrix_product<New_A, New_B> ReturnType;
         
         enum {
-            treechanges = tree_optimizer<A>::treechanges || tree_optimizer<B>::treechanges,
+            treechanges = tree_optimizer<A>::treechanges
+            || tree_optimizer<B>::treechanges,
         };
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<A>::build( mxpr.expression1() ) * tree_optimizer<B>::build( mxpr.expression2() );
+            return tree_optimizer<A>::build( mxpr.mexpression1() ) * tree_optimizer<B>::build( mxpr.mexpression2() );
         }
         
     };
@@ -217,7 +210,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename tree_optimizer<C>::ReturnType New_C;
         
     public:
-        typedef dmatrix_sum <New_C, dmatrix_product<A, B>> ReturnType;
+        typedef dmatrix_sum <New_C, dmatrix_product<A, B> > ReturnType;
         
         enum {
             treechanges = 1,
@@ -225,11 +218,11 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build( mxpr.expression2() ) + mxpr.expression1();
+            return tree_optimizer<C>::build( mxpr.mexpression2() ) + mxpr.mexpression1();
         }
         
     };
-    
+
     // catch C + A * B + D and builds (C + D) + (A * B)
     template <typename A, typename B, typename C, typename D>
     class tree_optimizer< dmatrix_sum< dmatrix_sum< C, dmatrix_product<A, B> >, D > > {
@@ -248,7 +241,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build( mxpr.expression1().expression1() ) + tree_optimizer<D>::build( mxpr.expression2() ) + mxpr.expression1().expression2();
+            return tree_optimizer<C>::build( mxpr.mexpression1().mexpression1() ) + tree_optimizer<D>::build( mxpr.mexpression2() ) + mxpr.mexpression1().mexpression2();
         }
         
     };
@@ -272,7 +265,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build(mxpr.expression1().expression1()) + mxpr.expression1().expression2() + mxpr.expression2();
+            return tree_optimizer<C>::build(mxpr.mexpression1().mexpression1()) + mxpr.mexpression1().mexpression2() + mxpr.mexpression2();
         }
         
     };
@@ -296,7 +289,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build(mxpr.expression1().expression1()) + mxpr.expression1().expression2() - mxpr.expression2();
+            return tree_optimizer<C>::build(mxpr.mexpression1().mexpression1()) + mxpr.mexpression1().mexpression2() - mxpr.mexpression2();
         }
         
     };
@@ -319,7 +312,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build(mxpr.expression1().expression2()) + tree_optimizer<D>::build(mxpr.expression2()) + tree_optimizer<dmatrix_product<A, B>>::build(mxpr.expression1().expression1());
+            return tree_optimizer<C>::build(mxpr.mexpression1().mexpression2()) + tree_optimizer<D>::build(mxpr.mexpression2()) + tree_optimizer<dmatrix_product<A, B> >::build(mxpr.mexpression1().mexpression1());
         }
     };
     
@@ -340,7 +333,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build( (mxpr.expression2() *= C::value_type(-1)) ) + mxpr.expression1();
+            return tree_optimizer<C>::build( (mxpr.mexpression2() *= C::value_type(-1)) ) + mxpr.mexpression1();
         }
         
     };
@@ -363,7 +356,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return (tree_optimizer<C>::build(mxpr.expression1().expression1()) - tree_optimizer<D>::build(mxpr.expression2())) + mxpr.expression1().expression2();
+            return (tree_optimizer<C>::build(mxpr.mexpression1().mexpression1()) - tree_optimizer<D>::build(mxpr.mexpression2())) + mxpr.mexpression1().mexpression2();
         }
         
     };
@@ -386,12 +379,13 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<C>::build(mxpr.expression1().expression1()) + tree_optimizer<D>::build(mxpr.expression2()) - mxpr.expression1().expression2();
+            return tree_optimizer<C>::build(mxpr.mexpression1().mexpression1()) + tree_optimizer<D>::build(mxpr.mexpression2()) - mxpr.mexpression1().mexpression2();
         }
         
     };
 
     // catch (A * B) * C and builds A * (B * C)
+    // very useful if C is a vector!
     template <typename A, typename B, typename C>
     class tree_optimizer< dmatrix_product< dmatrix_product<A, B>, C> > {
         
@@ -408,7 +402,7 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<A>::build(mxpr.expression1().expression1()) * (tree_optimizer<B>::build(mxpr.expression1().expression2()) * tree_optimizer<C>::build(mxpr.expression2()));
+            return tree_optimizer<A>::build(mxpr.mexpression1().mexpression1()) * (tree_optimizer<B>::build(mxpr.mexpression1().mexpression2()) * tree_optimizer<C>::build(mxpr.mexpression2()));
         }
         
     };
@@ -433,11 +427,11 @@ namespace boost { namespace numeric { namespace ublas {
         
         static BOOST_UBLAS_INLINE
         ReturnType build(const MatXpr& mxpr) {
-            return tree_optimizer<dmatrix_product<A, B>>::build(mxpr.expression1()) + tree_optimizer<dmatrix_product<C, D>>::build(mxpr.expression2());
+            return tree_optimizer<dmatrix_product<A, B>>::build(mxpr.mexpression1()) + tree_optimizer<dmatrix_product<C, D>>::build(mxpr.mexpression2());
         }
         
     };
-    
+ 
     /*
         This is used for the construction of the type vector used for the tree optimizer and Optimize class
     */
@@ -544,38 +538,59 @@ namespace boost { namespace numeric { namespace ublas {
     };
     
     /*
+        Work in progress!
         Define both assignment and evaluator classes. This is where an efficient evaluation of the optimized expression takes place.
     */
     
     //--------------------
     // Dense Evaluators
     //--------------------
-    
+
     template <typename T> class evaluator;
     
-    // Default evaluator assuming the expression is it's own evaluator
-    template <typename T, std::size_t M, std::size_t N, typename L>
-    class evaluator< static_matrix<T, M, N, L> > {
+    // Default evaluator
+    template <typename E>
+    class evaluator {
         
     public:
-        typedef T value_type;
-        typedef typename static_matrix<T, M, N, L>::size_type size_type;
+        typedef typename E::value_type value_type;
+        typedef typename E::size_type size_type;
         typedef evaluator eval_type;
         
         BOOST_UBLAS_INLINE
-        evaluator(const static_matrix<T, M, N, L>& e) : matxpr(e) { }
+        evaluator(const E& e) : matxpr(e) { }
         
         BOOST_UBLAS_INLINE
         value_type operator() (size_type i, size_type j) const { return matxpr(i, j); }
         
         BOOST_UBLAS_INLINE
-        value_type& operator() (size_type i, size_type j) { return const_cast<static_matrix<T, M, N, L>&> (matxpr)(i, j); }
+        value_type operator() (size_type i, size_type j) { return const_cast<E&> (matxpr)(i, j); }
         
-        const static_matrix<T, M, N, L>& matxpr;
+        const E& matxpr;
+        
+    };
+
+    template <typename T, std::size_t M, std::size_t N, typename L, typename A>
+    class evaluator< fixed_matrix<T, M, N, L, A> > {
+        
+    public:
+        typedef T value_type;
+        typedef typename fixed_matrix<T, M, N, L, A>::size_type size_type;
+        typedef evaluator eval_type;
+        
+        BOOST_UBLAS_INLINE
+        evaluator(const fixed_matrix<T, M, N, L, A>& e) : matxpr(e) { }
+        
+        BOOST_UBLAS_INLINE
+        value_type operator() (size_type i, size_type j) const { return matxpr(i, j); }
+        
+        BOOST_UBLAS_INLINE
+        value_type& operator() (size_type i, size_type j) { return const_cast<fixed_matrix<T, M, N, L, A>&> (matxpr)(i, j); }
+        
+        const fixed_matrix<T, M, N, L, A>& matxpr;
         
     };
     
-    // Default evaluator assuming the expression is it's own evaluator
     template <typename T, typename L, typename A>
     class evaluator< matrix<T, L, A> > {
         
@@ -596,7 +611,7 @@ namespace boost { namespace numeric { namespace ublas {
         const matrix<T, L, A>& matxpr;
         
     };
-    
+
     // evaluator of A + B
     template <typename A, typename B>
     class evaluator< dmatrix_sum<A, B> > {
@@ -606,16 +621,16 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename dmatrix_sum<A, B>::size_type size_type;
         typedef typename dmatrix_sum<A, B>::functor_type functor_type;
         typedef evaluator eval_type;
-        
+
         BOOST_UBLAS_INLINE
-        evaluator(const dmatrix_sum<A, B>& plus) : matrixl( plus.expression1() ), matrixr( plus.expression2() ) { }
+        evaluator(const dmatrix_sum<A, B>& plus) : matrixl( plus.mexpression1() ), matrixr( plus.mexpression2() ) { }
         
         BOOST_UBLAS_INLINE
         const value_type operator() (size_type i, size_type j) const { return functor_type::apply(matrixl, matrixr, i, j); }
         
         typename evaluator<A>::eval_type matrixl;
         typename evaluator<B>::eval_type matrixr;
-        
+
     };
     
     // evaluator of A - B
@@ -629,7 +644,7 @@ namespace boost { namespace numeric { namespace ublas {
         typedef evaluator eval_type;
         
         BOOST_UBLAS_INLINE
-        evaluator(const dmatrix_difference<A, B>& difference) : matrixl( difference.expression1() ), matrixr( difference.expression2() ) { }
+        evaluator(const dmatrix_difference<A, B>& difference) : matrixl( difference.mexpression1() ), matrixr( difference.mexpression2() ) { }
         
         BOOST_UBLAS_INLINE
         const value_type operator() (size_type i, size_type j) const { return functor_type::apply(matrixl, matrixr, i, j); }
@@ -639,9 +654,11 @@ namespace boost { namespace numeric { namespace ublas {
         
     };
     
-    // Matrix product evaluator, products are complex and must be evaluated into a temporary
-    // unless the evaluator is by passed by specializations of Assignment<>
-    // evaluator of A * B
+    /**
+        Matrix product evaluator, products must be evaluated into a temporary
+        unless the evaluator is by passed by specializations of Assignment<>
+        evaluator of A * B
+     */
     template <typename A, typename B>
     class evaluator< dmatrix_product<A, B> > {
         
@@ -659,22 +676,24 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_UBLAS_INLINE
         const value_type operator() (size_type i, size_type j) const { return result(i, j); }
         
-        static_matrix<value_type, A::ColsAtCompileTime, B::RowsAtCompileTime> result;
+        fixed_matrix<value_type, A::ColsAtCompileTime, B::RowsAtCompileTime> result; //fix me!
         typename evaluator<A>::eval_type matrixl;
         typename evaluator<B>::eval_type matrixr;
         
     };
     
-    /// performs dest += a * b;
-    /// A general implementation must be available outside the evaluator because it is needed by both
-    /// evaluator<Product> and Assignment<..., Product<...> > for in-place product evaluation
+    /**
+        performs dest += a * b;
+        A general implementation must be available outside the evaluator because it is needed by both
+        evaluator<Product> and assignment<..., product<...> > for in-place product evaluation
+    */
     template <typename Dest, typename A, typename B>
     void product_add_impl(Dest& dest, const dmatrix_product<A, B>& product) {
         
         typedef typename dmatrix_product<A, B>::functor_type functor_type;
         
-        evaluator<A> lhs(product.expression1());
-        evaluator<B> rhs(product.expression2());
+        evaluator<A> lhs(product.mexpression1());
+        evaluator<B> rhs(product.mexpression2());
         
         for(std::size_t i = 0; i < dest.size1(); ++i) {
             for(std::size_t j = 0; j < dest.size2(); ++j) {
@@ -683,16 +702,18 @@ namespace boost { namespace numeric { namespace ublas {
         }
     };
     
-    /// performs dest -= a * b;
-    /// A general implementation must be available outisde the evaluator because it is needed by both
-    /// evaluator<Product> and Assignment<..., Product<...> > for in-place product evaluation
+    /**
+        performs dest -= a * b;
+        A general implementation must be available outside the evaluator because it is needed by both
+        evaluator<Product> and assignment<..., product<...> > for in-place product evaluation
+     */
     template <typename Dest, typename A, typename B>
     void product_sub_impl(Dest& dest, const dmatrix_product<A, B>& product) {
         
         typedef typename dmatrix_product<A, B>::functor_type functor_type;
         
-        evaluator<A> lhs(product.expression1());
-        evaluator<B> rhs(product.expression2());
+        evaluator<A> lhs(product.mexpression1());
+        evaluator<B> rhs(product.mexpression2());
         
         for(std::size_t i = 0; i < dest.size1(); ++i) {
             for(std::size_t j = 0; j < dest.size2(); ++j) {
@@ -700,11 +721,11 @@ namespace boost { namespace numeric { namespace ublas {
             }
         }
     };
-    
+
     //-------------------
     // --- Assignment ---
     //-------------------
-    
+
     template < typename A, typename B, typename Op>
     class assignment;
     
@@ -713,14 +734,18 @@ namespace boost { namespace numeric { namespace ublas {
     void dense_assignment_loop(A& a, const B& b, const Op& op) {
         typename evaluator<A>::eval_type ea(a);
         typename evaluator<B>::eval_type eb(b);
-        
+
         for(std::size_t i = 0; i < a.size1(); ++i) {
             for(std::size_t j = 0; j < a.size2(); ++j) {
                 op.apply(ea(i, j), eb(i, j));
             }
         }
+
     }
     
+    /**
+        This function exists to select the proper assignment class.
+    */
     template <typename Dest, typename Src, typename Func>
     void assign(Dest& dest, const Src& src, const Func& func) {
         assignment<Dest, Src, Func>::run(dest, src, func);
@@ -730,7 +755,7 @@ namespace boost { namespace numeric { namespace ublas {
     class assignment {
         
     public:
-        static void run(A& a, const B& b, const Op& op) {
+        static void run(A& a, const B& b, const Op& op) { 
             dense_assignment_loop(a, b, op);
         }
         
@@ -784,8 +809,8 @@ namespace boost { namespace numeric { namespace ublas {
         
     public:
         static void run(A& a, const dmatrix_sum<D, dmatrix_product<ProdLhs,ProdRhs> >& b, const Op& op) {
-            assignment<A, D, Op>::run(a, b.expression1(), op);
-            assignment<A, dmatrix_product<ProdLhs, ProdRhs>, scalar_plus_assign<typename ProdLhs::value_type, typename ProdRhs::value_type> >::run(a, b.expression2(),
+            assignment<A, D, Op>::run(a, b.mexpression1(), op);
+            assignment<A, dmatrix_product<ProdLhs, ProdRhs>, scalar_plus_assign<typename ProdLhs::value_type, typename ProdRhs::value_type> >::run(a, b.mexpression2(),
             scalar_plus_assign<typename ProdLhs::value_type, typename ProdRhs::value_type>() );
         }
         
@@ -797,8 +822,8 @@ namespace boost { namespace numeric { namespace ublas {
         
     public:
         static void run(A& a, const dmatrix_difference<B, dmatrix_product<ProdLhs, ProdRhs> >& b, const Op& op) {
-            assignment<A, B, Op>::run(a, b.expression1(), op);
-            assignment<A, dmatrix_product<ProdLhs, ProdRhs>, scalar_minus_assign<typename ProdLhs::value_type, typename ProdRhs::value_type> >::run(a, b.expression2(),
+            assignment<A, B, Op>::run(a, b.mexpression1(), op);
+            assignment<A, dmatrix_product<ProdLhs, ProdRhs>, scalar_minus_assign<typename ProdLhs::value_type, typename ProdRhs::value_type> >::run(a, b.mexpression2(),
             scalar_minus_assign<typename ProdLhs::value_type, typename ProdRhs::value_type>() );
         }
         

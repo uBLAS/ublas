@@ -13,6 +13,7 @@
 #ifndef _BOOST_UBLAS_MATRIX_EXPRESSION_
 #define _BOOST_UBLAS_MATRIX_EXPRESSION_
 
+#include <algorithm>
 #include <boost/numeric/ublas/vector_expression.hpp>
 
 // Expression templates based on ideas of Todd Veldhuizen and Geoffrey Furnish
@@ -87,6 +88,10 @@ namespace boost { namespace numeric { namespace ublas {
             return expression () (i, j);
         }
 #endif
+            
+        using matrix_expression< matrix_reference<E> >::operator=;
+        using matrix_expression< matrix_reference<E> >::operator+=;
+        using matrix_expression< matrix_reference<E> >::operator-=;
 
         // Assignment
         BOOST_UBLAS_INLINE
@@ -4178,18 +4183,19 @@ namespace boost { namespace numeric { namespace ublas {
     }
 
     template<class E1, class E2, class F>
-    class matrix_matrix_binary : public matrix_expression< matrix_matrix_binary<E1, E2, F> > {
+    class matrix_matrix_binary:
+        public matrix_expression<matrix_matrix_binary<E1, E2, F> > {
 
     public:
         typedef const matrix_matrix_binary nested_type;
         typedef E1 expression1_type;
         typedef E2 expression2_type;
-    
-    private:
         typedef F functor_type;
     public:
-        typedef E1 expression1_closure_type;
-        typedef E2 expression2_closure_type;
+        typedef typename E1::const_closure_type expression1_closure_type;
+        typedef typename E2::const_closure_type expression2_closure_type;
+        typedef typename E1::nested_type expression1_nested_type;
+        typedef typename E2::nested_type expression2_nested_type;
     private:
         typedef matrix_matrix_binary<E1, E2, F> self_type;
     public:
@@ -4209,8 +4215,8 @@ namespace boost { namespace numeric { namespace ublas {
 
         // Construction and destruction
         BOOST_UBLAS_INLINE
-        matrix_matrix_binary (const expression1_type &e1, const expression2_type &e2):
-            e1_ (e1), e2_ (e2) {}
+        matrix_matrix_binary (const expression1_type& e1, const expression2_type& e2):
+            e1_ (e1), e2_ (e2), expression1_(e1), expression2_(e2) {}
 
         // Accessors
         BOOST_UBLAS_INLINE
@@ -4225,12 +4231,21 @@ namespace boost { namespace numeric { namespace ublas {
     public:
         // Expression accessors
         BOOST_UBLAS_INLINE
-        const expression1_closure_type &expression1 () const {
+        const expression1_closure_type& expression1 () const {
             return e1_;
         }
         BOOST_UBLAS_INLINE
-        const expression2_closure_type &expression2 () const {
+        const expression2_closure_type& expression2 () const {
             return e2_;
+        }
+ 
+        BOOST_UBLAS_INLINE
+        const expression1_type& mexpression1 () const {
+            return expression1_;
+        }
+        BOOST_UBLAS_INLINE
+        const expression2_type& mexpression2 () const {
+            return expression2_;
         }
 
     public:
@@ -4776,10 +4791,11 @@ namespace boost { namespace numeric { namespace ublas {
         }
 
     private:
-        //expression1_closure_type e1_;
-        //expression2_closure_type e2_;
-        typename E1::nested_type e1_;
-        typename E2::nested_type e2_;
+       expression1_closure_type e1_;
+       expression2_closure_type e2_;
+       expression1_nested_type expression1_;
+       expression2_nested_type expression2_;
+            
     };
 
     template<class T1, class E1, class T2, class E2>
@@ -4886,7 +4902,8 @@ namespace boost { namespace numeric { namespace ublas {
     }
 
     template<class E, class F>
-    class matrix_scalar_unary : public scalar_expression< matrix_scalar_unary<E, F> > {
+    class matrix_scalar_unary:
+        public scalar_expression<matrix_scalar_unary<E, F> > {
     public:
         typedef E expression_type;
         typedef F functor_type;
@@ -4950,35 +4967,38 @@ namespace boost { namespace numeric { namespace ublas {
     }
     
     /*
-        This is a general matrix matrix product class. Partial specializations should handle all the various use cases.
-        E1 and E2 are matrix expressions. F is the functor containing the compute kernel.
-    */
+     This is a general matrix matrix product class. Partial specializations should handle all the various use cases.
+     E1 and E2 are matrix expressions. F is the functor containing the compute kernel.
+     */
     template <typename E1, typename E2>
     struct product_traits {
         
         typedef typename E1::expression1_type expression1_type;
         typedef typename E2::expression2_type expression2_type;
-       /*
-        enum {
-            RowsAtCompileTime = expression1_type::RowsAtCompileTime,
-            ColsAtCompileTime = expression2_type::ColsAtCompileTime,
-            SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
-        };
-        */
+        /*
+         enum {
+         RowsAtCompileTime = expression1_type::RowsAtCompileTime,
+         ColsAtCompileTime = expression2_type::ColsAtCompileTime,
+         SizeAtCompileTime = RowsAtCompileTime * ColsAtCompileTime,
+         };
+         */
     };
     
     template<typename E1, typename E2, typename F = dmatdmatprod<E1, E2> >
     class general_product : public matrix_expression< general_product<E1, E2, F> > {
         
     public:
-        typedef const general_product nested_type;
+        typedef const general_product& nested_type;
+        typedef nested_type const_closure_type;
         typedef E1 expression1_type;
         typedef E2 expression2_type;
+        typedef typename E1::const_closure_type expression1_closure_type; // !!!! Also matrix_matrix_binary
+        typedef typename E2::const_closure_type expression2_closure_type;
+        typedef typename E1::nested_type expression1_nested_type;
+        typedef typename E2::nested_type expression2_nested_type;
         typedef F functor_type;
         
     private:
-        typedef E1 expression1_closure_type;
-        typedef E2 expression2_closure_type;
         typedef general_product<E1, E2, F> self_type;
         
     public:
@@ -5004,7 +5024,7 @@ namespace boost { namespace numeric { namespace ublas {
         size_type size2 () const {
             return e2_.size2 ();
         }
-
+        
         // Element access
         BOOST_UBLAS_INLINE
         const_reference operator() (size_type i, size_type j) const {
@@ -5013,11 +5033,11 @@ namespace boost { namespace numeric { namespace ublas {
         
         // Expression accessors
         BOOST_UBLAS_INLINE
-        const expression1_type& expression1() const {
+        const expression1_type& mexpression1() const {
             return e1_;
         }
         BOOST_UBLAS_INLINE
-        const expression2_type& expression2() const {
+        const expression2_type& mexpression2() const {
             return e2_;
         }
         
@@ -5555,7 +5575,74 @@ namespace boost { namespace numeric { namespace ublas {
         
     };
     
+    template <class E, class F>
+    class matrix_unary:
+    public matrix_expression< matrix_unary<E, F> > {
+        
+    public:
+        typedef const matrix_unary nested_type;
+        typedef E expression_type;
+        typedef F functor_type;
+    public:
+        typedef typename E::const_closure_type expression_closure_type;
+    private:
+        typedef matrix_unary<E, F> self_type;
+    public:
+#ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
+        using matrix_expression<self_type>::operator ();
+#endif
+        static const unsigned complexity = 1;
+        typedef typename E::size_type size_type;
+        typedef typename E::difference_type difference_type;
+        typedef typename F::result_type value_type;
+        typedef value_type const_reference;
+        typedef const_reference reference;
+        typedef const self_type const_closure_type;
+        typedef const_closure_type closure_type;
+        typedef unknown_orientation_tag orientation_category;
+        typedef unknown_storage_tag storage_category;
+        
+        // Construction and destruction
+        BOOST_UBLAS_INLINE
+        matrix_unary (const expression_type &e) : e_ (e) {}
+        
+        // Accessors
+        BOOST_UBLAS_INLINE
+        size_type size1 () const {
+            return e_.size1 ();
+        }
+        BOOST_UBLAS_INLINE
+        size_type rows () const {
+            return e_.size1 ();
+        }
+        
+        BOOST_UBLAS_INLINE
+        size_type size2 () const {
+            return e_.size2 ();
+        }
+        BOOST_UBLAS_INLINE
+        size_type cols () const {
+            return e_.size2 ();
+        }
+        
+        // Expression accessors
+        BOOST_UBLAS_INLINE
+        const expression_closure_type& expression() const {
+            return e_;
+        }
+        
+        // Element access
+        BOOST_UBLAS_INLINE
+        const_reference operator () (size_type i, size_type j) const {
+            return functor_type::apply (e_, i, j);
+        }
+        
+    private:
+        expression_closure_type e_;
+        
+    };
 
+    
 }}}
 
 #endif

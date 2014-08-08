@@ -1115,14 +1115,14 @@ namespace boost { namespace numeric { namespace ublas {
     };
 
     // Binary returning matrix
-    template <class M1, class M2, class TV>
+    template<class M1, class M2, class TV>
     struct matrix_matrix_binary_functor {
         typedef typename M1::size_type size_type;
         typedef typename M1::difference_type difference_type;
         typedef TV value_type;
         typedef TV result_type;
     };
-    
+
     template<class M1, class M2, class TV>
     struct matrix_matrix_prod:
         public matrix_matrix_binary_functor<M1, M2, TV> {
@@ -1257,14 +1257,14 @@ namespace boost { namespace numeric { namespace ublas {
         }
     };
 
-    // Unary functor
+    // Unary returning scalar norm
     template<class M>
     struct matrix_scalar_real_unary_functor {
         typedef typename M::value_type value_type;
         typedef typename type_traits<value_type>::real_type real_type;
         typedef real_type result_type;
     };
-    
+
     template<class M>
     struct matrix_norm_1:
         public matrix_scalar_real_unary_functor<M> {
@@ -2056,9 +2056,8 @@ namespace boost { namespace numeric { namespace ublas {
     { 
         typedef strict_upper_tag triangular_type;
     };
-    
-    
-    // Binary returning matrix
+
+    // Binary evaluator traits
     template <typename M1, typename M2>
     struct binary_evaluator_traits {
         typedef typename promote_traits<typename M1::size_type, typename M2::size_type>::promote_type size_type;
@@ -2123,8 +2122,6 @@ namespace boost { namespace numeric { namespace ublas {
         }
         
     };
-
-
 
 }}}
 

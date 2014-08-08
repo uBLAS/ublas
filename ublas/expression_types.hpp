@@ -17,7 +17,6 @@
 #include <boost/numeric/ublas/detail/matrix_assign.hpp>
 #include <boost/numeric/ublas/tree_optimizer.hpp>
 
-
 // Expression templates based on ideas of Todd Veldhuizen and Geoffrey Furnish
 // Iterators based on ideas of Jeremy Siek
 
@@ -42,8 +41,6 @@ namespace boost { namespace numeric { namespace ublas {
     protected:
         ublas_expression () {}
         ~ublas_expression () {}
-    private:
-       // const ublas_expression& operator= (const ublas_expression &);
     };
 
 
@@ -58,7 +55,7 @@ namespace boost { namespace numeric { namespace ublas {
      * \tparam E an expression type
      */
     template<class E>
-    class scalar_expression :
+    class scalar_expression:
         public ublas_expression<E> {
     public:
         typedef E expression_type;
@@ -295,8 +292,7 @@ namespace boost { namespace numeric { namespace ublas {
         using vector_expression<C>::operator ();
 #endif
     };
-
-
+    
     /** \brief Base class for Matrix Expression models
      *
      * it does not model the Matrix Expression concept but all derived types should.
@@ -313,119 +309,130 @@ namespace boost { namespace numeric { namespace ublas {
         typedef E expression_type;
         typedef matrix_tag type_category;
         /* E can be an incomplete type - to define the following we would need more template arguments
-        typedef typename E::size_type size_type;
-        */
-
+         typedef typename E::size_type size_type;
+         */
+        
         BOOST_UBLAS_INLINE
-        const expression_type &operator () () const {
+        const expression_type& operator () () const {
             return *static_cast<const expression_type *> (this);
         }
         BOOST_UBLAS_INLINE
-        expression_type &operator () () {
+        expression_type& operator () () {
             return *static_cast<expression_type *> (this);
         }
         
         BOOST_UBLAS_INLINE
-        const E& m_expression() const { return static_cast<const E&>(*this); }
-            
+        const E& mexpression() const { return static_cast<const E&>(*this); }
+        
         BOOST_UBLAS_INLINE
-        E& m_expression() { return static_cast<E&>(*this); }
-           
+        E& mexpression() { return static_cast<E&>(*this); }
+        
         BOOST_UBLAS_INLINE
         operator E&() { return static_cast<E&>(*this); }
         
         BOOST_UBLAS_INLINE
         operator const E&() const { return static_cast<const E&>(*this); }
-
+        
         template <typename Other>
         BOOST_UBLAS_INLINE
         general_product<E, Other> operator* (const matrix_expression<Other>& other) const {
-            return general_product<E, Other> (m_expression(), other.m_expression());
+            return general_product<E, Other> (mexpression(), other.mexpression());
         }
         
         template <typename Other>
         BOOST_UBLAS_INLINE
         matrix_matrix_binary<E, Other, dmatdmatsum<E, Other> > operator+ (const matrix_expression<Other>& other) const {
-            return matrix_matrix_binary<E, Other, dmatdmatsum<E, Other> > (m_expression(), other.m_expression());
+            return matrix_matrix_binary<E, Other, dmatdmatsum<E, Other> > (mexpression(), other.mexpression());
         }
         
         template <typename Other>
         BOOST_UBLAS_INLINE
         matrix_matrix_binary<E, Other, dmatdmatsub<E, Other> > operator- (const matrix_expression<Other>& other) const {
-            return matrix_matrix_binary<E, Other, dmatdmatsub<E, Other> > (m_expression(), other.m_expression());
+            return matrix_matrix_binary<E, Other, dmatdmatsub<E, Other> > (mexpression(), other.mexpression());
         }
-        /*
-        template <typename Other>
+        
+        template<typename Other>
         BOOST_UBLAS_INLINE
         E& operator = (const matrix_expression<Other>& other) {
             
-            typedef typename expression_types< 5, Other, Other >::type expressions; // need to define a max depth for this template
+            /*
+                Old ublas matrix assign struct. This is included here in case something is wrong with the tree optimizer/evaluator/assignment stuff.
+            */
+            // matrix_assign< scalar_assign > ( m_expression(), tree_optimizer::optimize(other.m_expression()) );
+            
+            typedef typename expression_types< MAX_RECURSION_DEPTH, Other, Other >::type expressions; // MAX_RECURSION_DEPTH = 5 as defined in tree_optimizer.hpp
             typedef typename to_variadic< expressions >::type tree_optimizer;
             
-            matrix_assign< scalar_assign > ( m_expression(), tree_optimizer::optimize(other.m_expression()) );
-            return m_expression();
+            assign(mexpression(), tree_optimizer::optimize(other.mexpression()), scalar_assign<typename E::value_type, typename Other::value_type>());
+            return mexpression();
         }
-    
-        template <typename Other>
-        BOOST_UBLAS_INLINE
-        E& operator += (const matrix_expression<Other>& other) {
-            matrix_assign< scalar_plus_assign > (m_expression(), other.m_expression());
-            return m_expression();
-        }
-        
-        template <typename Other>
-        BOOST_UBLAS_INLINE
-        E& operator -= (const matrix_expression<Other>& other) {
-            matrix_assign< scalar_minus_assign > (m_expression(), other.m_expression());
-            return m_expression();
-        }
-        */
         
         template<typename Other>
         BOOST_UBLAS_INLINE
-        E& operator = (const matrix_expression<Other>& other) {
-            assign(m_expression(), other.m_expression(), scalar_assign<typename E::value_type, typename Other::value_type>());
-            return m_expression();
+        E& operator = (const matrix_expression<Other>&& other) { 
+            
+            /*
+             Old ublas matrix assign struct. This is included here in case something is wrong with the tree optimizer/evaluator/assignment stuff.
+             */
+            // matrix_assign< scalar_assign > ( m_expression(), tree_optimizer::optimize(other.m_expression()) );
+            
+            typedef typename expression_types< MAX_RECURSION_DEPTH, Other, Other >::type expressions; // MAX_RECURSION_DEPTH = 5 as defined in tree_optimizer.hpp
+            typedef typename to_variadic< expressions >::type tree_optimizer;
+            //std::cout << "test size = " << mpl::size<expressions>::value << "\n";
+            assign(mexpression(), tree_optimizer::optimize(other.mexpression()), scalar_assign<typename E::value_type, typename Other::value_type>());
+            return mexpression();
         }
         
         template<typename Other>
         BOOST_UBLAS_INLINE
         E& operator += (const matrix_expression<Other>& other) {
-            assign(m_expression(), other.m_expression(), scalar_plus_assign<typename E::value_type, typename Other::value_type>());
-            return m_expression();
+            
+            /*
+             Old ublas matrix assign struct. This is included here in case something is wrong with the tree optimizer/evaluator/assignment stuff.
+             */
+            // matrix_assign< scalar_plus_assign > (m_expression(), other.m_expression());
+            
+            assign(mexpression(), other.mexpression(), scalar_plus_assign<typename E::value_type, typename Other::value_type>());
+            return mexpression();
         }
         
         template<typename Other>
         BOOST_UBLAS_INLINE
         E& operator -= (const matrix_expression<Other>& other) {
-            assign(m_expression(), other.m_expression(), scalar_minus_assign<typename E::value_type, typename Other::value_type>());
-            return m_expression();
+            
+            /*
+             Old ublas matrix assign struct. This is included here in case something is wrong with the tree optimizer/evaluator/assignment stuff.
+             */
+            // matrix_assign< scalar_minus_assign > (mexpression(), other.mexpression());
+            
+            assign(mexpression(), other.mexpression(), scalar_minus_assign<typename E::value_type, typename Other::value_type>());
+            return mexpression();
         }
         
         template <typename T>
         BOOST_UBLAS_INLINE
         E& operator *= (const T& c) {
-            matrix_assign_scalar<scalar_multiplies_assign> (m_expression(), c);
-            return m_expression();
+            matrix_assign_scalar<scalar_multiplies_assign> (mexpression(), c);
+            return mexpression();
         }
         
         template <typename T>
         BOOST_UBLAS_INLINE
         E& operator /= (const T& c) {
-            matrix_assign_scalar<scalar_divides_assign> (m_expression(), c);
-            return m_expression();
+            matrix_assign_scalar<scalar_divides_assign> (mexpression(), c);
+            return mexpression();
         }
         
         BOOST_UBLAS_INLINE
         void trans_in_place() {
-            for(std::size_t i = 0; i < m_expression().size1() - 2; ++i) {
-                for(std::size_t j = i + 1; j < m_expression().size2(); ++j) {
-                    std::swap( m_expression()(j, i), m_expression()(i, j) );
+            for(std::size_t i = 0; i < mexpression().size1() - 2; ++i) {
+                for(std::size_t j = i + 1; j < mexpression().size2(); ++j) {
+                    std::swap( mexpression()(j, i), mexpression()(i, j) );
                 }
             }
         }
-
-
+        
+        
 #ifdef BOOST_UBLAS_ENABLE_PROXY_SHORTCUTS
     private:
         // projection types
@@ -441,10 +448,10 @@ namespace boost { namespace numeric { namespace ublas {
         typedef const matrix_range<const E> const_matrix_range_type;
         typedef matrix_slice<E> matrix_slice_type;
         typedef const matrix_slice<const E> const_matrix_slice_type;
-        // matrix_indirect_type will depend on the A template parameter 
+        // matrix_indirect_type will depend on the A template parameter
         typedef basic_range<> default_range;    // required to avoid range/slice name confusion
         typedef basic_slice<> default_slice;
-
+        
     public:
         BOOST_UBLAS_INLINE
         const_matrix_row_type operator [] (std::size_t i) const {
@@ -470,7 +477,7 @@ namespace boost { namespace numeric { namespace ublas {
         matrix_column_type column (std::size_t j) {
             return matrix_column_type (operator () (), j);
         }
-
+        
         BOOST_UBLAS_INLINE
         const_matrix_range_type operator () (const default_range &r1, const default_range &r2) const {
             return const_matrix_range_type (operator () (), r1, r2);
@@ -497,7 +504,7 @@ namespace boost { namespace numeric { namespace ublas {
         matrix_indirect<E, indirect_array<A> > operator () (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
             return matrix_indirect<E, indirect_array<A> > (operator () (), ia1, ia2);
         }
-
+        
         BOOST_UBLAS_INLINE
         const_matrix_range_type project (const default_range &r1, const default_range &r2) const {
             return const_matrix_range_type (operator () (), r1, r2);
@@ -524,7 +531,7 @@ namespace boost { namespace numeric { namespace ublas {
         matrix_indirect<E, indirect_array<A> > project (const indirect_array<A> &ia1, const indirect_array<A> &ia2) {
             return matrix_indirect<E, indirect_array<A> > (operator () (), ia1, ia2);
         }
-            
+        
 #endif
     };
 
