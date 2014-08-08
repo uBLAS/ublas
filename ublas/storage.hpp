@@ -503,23 +503,27 @@ namespace boost { namespace numeric { namespace ublas {
         }
         
         BOOST_UBLAS_INLINE
-        aligned_array(const std::initializer_list<value_type>& init) : storage_array<self_type> () {
+        aligned_array(const std::initializer_list<value_type>& init) :
+        alloc_ (allocator_type()), storage_array<self_type> () {
             data_ = alloc_.allocate (init.size());
             std::copy(init.begin(), init.end(), begin());
         }
         
         BOOST_UBLAS_INLINE
-        aligned_array(const value_type& init) : alloc_ (allocator_type()), size_(N) {
+        aligned_array(const value_type& init) :
+        alloc_ (allocator_type()), size_(N) {
             data_ = alloc_.allocate (N);
             std::fill(begin(), end(), init) ;
         }
         BOOST_UBLAS_INLINE
-        aligned_array(const aligned_array& c) : alloc_ (c.alloc_), size_ (c.size_)  {
+        aligned_array(const aligned_array& c) :
+        alloc_ (c.alloc_), size_ (c.size_)  {
             data_ = alloc_.allocate (size_);
             std::copy(c.begin(), c.end(), begin());
         }
         BOOST_UBLAS_INLINE
-        aligned_array(size_type size, const value_type& init) : alloc_ (allocator_type()), size_(size) {
+        aligned_array(size_type size, const value_type& init) :
+        alloc_ (allocator_type()), size_(size) {
             data_ = alloc_.allocate (size_);
             std::fill(begin(), end(), init);
         }
