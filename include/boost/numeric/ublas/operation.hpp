@@ -774,11 +774,12 @@ namespace boost { namespace numeric { namespace ublas {
         typedef typename M::storage_category storage_category;
         typedef typename detail::prod_block_size<typename common_type<typename E1::value_type,
                                                                       typename E2::value_type>::type> block_sizes;
-#ifndef BOOST_UBLAS_SMALL_MATRICES
+#ifndef BOOST_UBLAS_LEGACY_PRODUCT
         return axpy_prod(e1, e2, m, full (), storage_category (),
                         init, block_sizes());
 #else
         typedef typename M::value_type value_type;
+        typedef typename M::storage_category storage_category;
         typedef typename M::orientation_category orientation_category;
 
         if (init)

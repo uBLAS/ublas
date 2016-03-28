@@ -103,5 +103,19 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
 
          static bool const value = sizeof(f<derived>(0)) == 2;
     };
+
+    template<typename T>
+    struct check_blocksize {
+        BOOST_STATIC_ASSERT_MSG(T::mc>0 && T::kc>0 && T::nc>0 && T::mr>0 && T::nr>0,
+                                "Invalid block size.");
+        BOOST_STATIC_ASSERT_MSG(T::mc % T::mr == 0,
+                                "MC must be a multiple of MR.");
+        BOOST_STATIC_ASSERT_MSG(T::nc % T::nr == 0,
+                                "NC must be a multiple of NR.");
+        BOOST_STATIC_ASSERT_MSG(T::vector_length <= 1 || T::nr % T::vector_length == 0,
+                                "NR must be a multiple of vector size");
+        BOOST_STATIC_ASSERT_MSG(T::limit >= 2,
+                                "Minimum matrix size for gemm is 2*2");
+    };
 }}}}
 #endif
