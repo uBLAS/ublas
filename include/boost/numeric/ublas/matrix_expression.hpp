@@ -5551,7 +5551,7 @@ namespace boost { namespace numeric { namespace ublas {
 
     template<class E1, class E2>
     BOOST_UBLAS_INLINE
-#ifndef BOOST_UBLAS_SMALL_MATRICES
+#ifndef BOOST_UBLAS_LEGACY_PRODUCT
     typename matrix_matrix_binary_traits<typename E1::value_type, E1,
                                          typename E2::value_type, E2>::result_type
 #else
@@ -5563,7 +5563,7 @@ namespace boost { namespace numeric { namespace ublas {
         BOOST_STATIC_ASSERT (E1::complexity == 0 && E2::complexity == 0);
        typedef typename detail::prod_block_size<typename common_type<typename E1::value_type,
                                                                      typename E2::value_type>::type> block_sizes;
-#ifndef BOOST_UBLAS_SMALL_MATRICES
+#ifndef BOOST_UBLAS_LEGACY_PRODUCT
         return prod (e1, e2, block_sizes());
 #else
         return prod (e1, e2, block_sizes(), unknown_storage_tag(),
@@ -5665,7 +5665,7 @@ namespace boost { namespace numeric { namespace ublas {
                                                      typename E2::value_type, E2>::orientation_category orientation_category;
         typedef typename detail::prod_block_size<typename common_type<typename E1::value_type,
                                                                       typename E2::value_type>::type> block_sizes;
-#ifndef BOOST_UBLAS_SMALL_MATRICES
+#ifndef BOOST_UBLAS_LEGACY_PRODUCT
         prod (e1, e2, m, block_sizes(), storage_category(), 
               orientation_category());
 #else
