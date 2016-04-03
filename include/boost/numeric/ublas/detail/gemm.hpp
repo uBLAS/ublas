@@ -86,7 +86,30 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         static const unsigned vector_length = BlockSize::vector_length;
         static const Index MR = BlockSize::mr;
         static const Index NR = BlockSize::nr/vector_length;
+        static const Index nr = BlockSize::nr;
+#ifdef BOOST_COMP_INTEL_DETECTION
+        static const Index pl = MR * nr;
 
+        T P[pl] = {};
+
+        for (Index l=0; l<kc; ++l) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                    P[i*nr+j:vector_length] += A[i]*B[j:vector_length];
+                }
+            }
+            A += MR;
+            B += nr;
+        }
+
+        if (alpha!=TC(1)) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                    P[i*nr+j:vector_length] *= alpha;
+                }
+            }
+        }
+#else
 #ifdef BOOST_COMP_CLANG_DETECTION
         typedef T vx __attribute__((ext_vector_type (vector_length)));
 #else
@@ -113,19 +136,19 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 }
             }
         }
-
+#endif
         const T *p = (const T *) P;
         if (beta == TC(0)) {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
-                    C[i*incRowC+j*incColC] = p[i*NR * vector_length +j];
+                for (Index j=0; j< nr; ++j) {
+                    C[i*incRowC+j*incColC] = p[i * nr +j];
                 }
             }
         } else {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
+                for (Index j=0; j< nr; ++j) {
                     C[i*incRowC+j*incColC] *= beta;
-                    C[i*incRowC+j*incColC] += p[i*NR * vector_length+j];
+                    C[i*incRowC+j*incColC] += p[i * nr + j];
                 }
             }
         }
@@ -205,7 +228,37 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         static const unsigned vector_length = BlockSize::vector_length;
         static const Index MR = BlockSize::mr;
         static const Index NR = BlockSize::nr/vector_length;
+        static const Index nr = BlockSize::nr;
+#ifdef BOOST_COMP_INTEL_DETECTION
+        static const Index pl = MR * nr;
 
+        T Pr[pl] = {};
+        T Pi[pl] = {};
+
+        for (Index l=0; l<kc; ++l) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                  Pr[i * nr + j:vector_length] +=
+                      Ar[i] * Br[j:vector_length] - Ai[i] * Bi[j:vector_length];
+                  Pi[i * nr + j:vector_length] +=
+                      Ar[i] * Bi[j:vector_length] + Ai[i] * Br[j:vector_length];
+                }
+            }
+            Ar += MR;
+            Ai += MR;
+            Br += nr;
+            Bi += nr;
+        }
+
+        if (alpha!=TC(1)) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                    Pr[i*nr+j:vector_length] *= alpha.real();
+                    Pi[i*nr+j:vector_length] *= alpha.imag();
+                }
+            }
+        }
+#else
 #ifdef BOOST_COMP_CLANG_DETECTION
         typedef T vx __attribute__((ext_vector_type (vector_length)));
 #else
@@ -238,22 +291,22 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 }
             }
         }
-
+#endif
         const T *pr = (const T *) Pr;
         const T *pi = (const T *) Pi;
         if (beta == TC(0)) {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
+                for (Index j=0; j< nr; ++j) {
                     C[i*incRowC+j*incColC] =
-                        TC(pr[i*NR * vector_length +j], pi[i*NR * vector_length +j]);
+                        TC(pr[i * nr + j], pi[i * nr  + j]);
                 }
             }
         } else {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
+                for (Index j=0; j< nr; ++j) {
                     C[i*incRowC+j*incColC] *= beta;
                     C[i*incRowC+j*incColC] +=
-                          TC(pr[i*NR * vector_length+j], pi[i*NR * vector_length+j]);
+                        TC(pr[i * nr + j], pi[i * nr + j]);
                 }
             }
         }
@@ -445,8 +498,10 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
     pack_A(const matrix_expression<E> &A, std::pair<T*, T*> p, BlockSize)
     {
         typedef typename E::size_type  size_type;
-        BOOST_ALIGN_ASSUME_ALIGNED(p.first, BlockSize::align);
-        BOOST_ALIGN_ASSUME_ALIGNED(p.second, BlockSize::align);
+        T* re = p.first;
+        T* im = p.second;
+        BOOST_ALIGN_ASSUME_ALIGNED(re, BlockSize::align);
+        BOOST_ALIGN_ASSUME_ALIGNED(im, BlockSize::align);
 
         const size_type mc = A ().size1();
         const size_type kc = A ().size2();
@@ -458,8 +513,8 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 for (size_type i0=0; i0<MR; ++i0) {
                     size_type i  = l*MR + i0;
                     size_type nu = l*MR*kc + j*MR + i0;
-                    p.first[nu]  = (i<mc) ? A()(i,j).real() : T(0);
-                    p.second[nu] = (i<mc) ? A()(i,j).imag() : T(0);
+                    re[nu]  = (i<mc) ? A()(i,j).real() : T(0);
+                    im[nu] = (i<mc) ? A()(i,j).imag() : T(0);
                 }
             }
         }
@@ -493,8 +548,10 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
     pack_B(const matrix_expression<E> &B, std::pair<T*, T*> p, BlockSize)
     {
         typedef typename E::size_type  size_type;
-        BOOST_ALIGN_ASSUME_ALIGNED(p.first, BlockSize::align);
-        BOOST_ALIGN_ASSUME_ALIGNED(p.second, BlockSize::align);
+        T* re = p.first;
+        T* im = p.second;
+        BOOST_ALIGN_ASSUME_ALIGNED(re, BlockSize::align);
+        BOOST_ALIGN_ASSUME_ALIGNED(im, BlockSize::align);
 
         const size_type kc = B ().size1();
         const size_type nc = B ().size2();
@@ -506,8 +563,8 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 for (size_type i=0; i<kc; ++i) {
                     size_type j  = l*NR+j0;
                     size_type nu = l*NR*kc + i*NR + j0;
-                    p.first[nu]  = (j<nc) ? B()(i,j).real() : T(0);
-                    p.second[nu] = (j<nc) ? B()(i,j).imag() : T(0);
+                    re[nu] = (j<nc) ? B()(i,j).real() : T(0);
+                    im[nu] = (j<nc) ? B()(i,j).imag() : T(0);
                 }
             }
         }
