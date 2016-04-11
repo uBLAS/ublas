@@ -71,7 +71,7 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
     }
 
     //-- Micro Kernel ----------------------------------------------------------
-#ifdef BOOST_UBLAS_VECTOR_KERNEL
+#if defined(BOOST_UBLAS_VECTOR_KERNEL)
     template <typename Index, typename T, typename TC,
               typename BlockSize>
     typename enable_if_c<is_arithmetic<T>::value
@@ -86,7 +86,30 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         static const unsigned vector_length = BlockSize::vector_length;
         static const Index MR = BlockSize::mr;
         static const Index NR = BlockSize::nr/vector_length;
+        static const Index nr = BlockSize::nr;
+#ifdef BOOST_COMP_INTEL_DETECTION
+        static const Index pl = MR * nr;
 
+        T P[pl] = {};
+
+        for (Index l=0; l<kc; ++l) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                    P[i*nr+j:vector_length] += A[i]*B[j:vector_length];
+                }
+            }
+            A += MR;
+            B += nr;
+        }
+
+        if (alpha!=TC(1)) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                    P[i*nr+j:vector_length] *= alpha;
+                }
+            }
+        }
+#else
 #ifdef BOOST_COMP_CLANG_DETECTION
         typedef T vx __attribute__((ext_vector_type (vector_length)));
 #else
@@ -113,19 +136,19 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 }
             }
         }
-
+#endif
         const T *p = (const T *) P;
         if (beta == TC(0)) {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
-                    C[i*incRowC+j*incColC] = p[i*NR * vector_length +j];
+                for (Index j=0; j< nr; ++j) {
+                    C[i*incRowC+j*incColC] = p[i * nr +j];
                 }
             }
         } else {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
+                for (Index j=0; j< nr; ++j) {
                     C[i*incRowC+j*incColC] *= beta;
-                    C[i*incRowC+j*incColC] += p[i*NR * vector_length+j];
+                    C[i*incRowC+j*incColC] += p[i * nr + j];
                 }
             }
         }
@@ -186,7 +209,8 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
             }
         }
     }
-#ifdef BOOST_UBLAS_VECTOR_KERNEL
+
+#if defined(BOOST_UBLAS_VECTOR_KERNEL)
     template <typename Index, typename T, typename TC,
               typename BlockSize>
     typename enable_if_c<is_arithmetic<T>::value
@@ -204,7 +228,37 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         static const unsigned vector_length = BlockSize::vector_length;
         static const Index MR = BlockSize::mr;
         static const Index NR = BlockSize::nr/vector_length;
+        static const Index nr = BlockSize::nr;
+#ifdef BOOST_COMP_INTEL_DETECTION
+        static const Index pl = MR * nr;
 
+        T Pr[pl] = {};
+        T Pi[pl] = {};
+
+        for (Index l=0; l<kc; ++l) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                  Pr[i * nr + j:vector_length] +=
+                      Ar[i] * Br[j:vector_length] - Ai[i] * Bi[j:vector_length];
+                  Pi[i * nr + j:vector_length] +=
+                      Ar[i] * Bi[j:vector_length] + Ai[i] * Br[j:vector_length];
+                }
+            }
+            Ar += MR;
+            Ai += MR;
+            Br += nr;
+            Bi += nr;
+        }
+
+        if (alpha!=TC(1)) {
+            for (Index i=0; i<MR; ++i) {
+                for (Index j=0; j<nr; j += vector_length) {
+                    Pr[i*nr+j:vector_length] *= alpha.real();
+                    Pi[i*nr+j:vector_length] *= alpha.imag();
+                }
+            }
+        }
+#else
 #ifdef BOOST_COMP_CLANG_DETECTION
         typedef T vx __attribute__((ext_vector_type (vector_length)));
 #else
@@ -237,22 +291,22 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 }
             }
         }
-
+#endif
         const T *pr = (const T *) Pr;
         const T *pi = (const T *) Pi;
         if (beta == TC(0)) {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
-                    C[i*incRowC+j*incColC] = 
-                        TC(pr[i*NR * vector_length +j], pi[i*NR * vector_length +j]);
+                for (Index j=0; j< nr; ++j) {
+                    C[i*incRowC+j*incColC] =
+                        TC(pr[i * nr + j], pi[i * nr  + j]);
                 }
             }
         } else {
             for (Index i=0; i<MR; ++i) {
-                for (Index j=0; j<NR * vector_length; ++j) {
+                for (Index j=0; j< nr; ++j) {
                     C[i*incRowC+j*incColC] *= beta;
                     C[i*incRowC+j*incColC] +=
-                          TC(pr[i*NR * vector_length+j], pi[i*NR * vector_length+j]);
+                        TC(pr[i * nr + j], pi[i * nr + j]);
                 }
             }
         }
@@ -323,8 +377,6 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
             }
         }
     }
-
-
     //-- Macro Kernel ----------------------------------------------------------
     template <typename Index, typename T, typename TC, typename BlockSize>
     void
@@ -339,9 +391,6 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         const Index mr_ = mc % MR;
         const Index nr_ = nc % NR;
 
-        // #if defined(_OPENMP)
-        // #pragma omp parallel for
-        // #endif
         for (Index j=0; j<np; ++j) {
             const Index nr = (j!=np-1 || nr_==0) ? NR : nr_;
             TC C_[MR*NR];
@@ -385,9 +434,6 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         const Index mr_ = mc % MR;
         const Index nr_ = nc % NR;
 
-        // #if defined(_OPENMP)
-        // #pragma omp parallel for
-        // #endif
         for (Index j=0; j<np; ++j) {
             const Index nr = (j!=np-1 || nr_==0) ? NR : nr_;
             TC C_[MR*NR];
@@ -398,7 +444,7 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
                 if (mr==MR && nr==NR) {
                     ugemm<Index, T, TC, BlockSize>
                         (kc, alpha,
-                         &A.first[i*kc*MR], &A.second[i*kc*MR],
+                         &A.first[i*kc*MR], &A.second[i*kc*MR], 
                          &B.first[j*kc*NR], &B.second[j*kc*NR],
                          beta,
                          &C[i*MR*incRowC+j*NR*incColC],
@@ -520,13 +566,12 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
     }
 
     //-- Frame routine -------------------------------------------------------------
-
     template <typename E1, typename E2, typename E3, typename M, typename BlockSize>
     void
     gemm_(typename E3::value_type alpha, const matrix_expression<E1> &e1,
-         const matrix_expression<E2> &e2,
-         typename E3::value_type beta, matrix_expression<E3> &e3,
-         M A, M B, BlockSize bs)
+          const matrix_expression<E2> &e2,
+          typename E3::value_type beta, matrix_expression<E3> &e3,
+          M A, M B, BlockSize bs)
     {
 #if defined(BOOST_COMP_GNUC_DETECTION)
         check_blocksize<BlockSize> check __attribute__ ((unused));
@@ -573,7 +618,7 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
 
                     const matrix_range<const E1> As =
                         subrange(e1(), i*MC, i*MC+mc, l*KC, l*KC+kc);
-                    pack_A(As, A, bs);
+                    pack_A (As, A, bs);
 
                     mgemm(mc, nc, kc, alpha, A, B, beta_,
                           &C_[i*MC*incRowC+j*NC*incColC],
@@ -597,7 +642,9 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         typedef typename E1::value_type value_type1;
         typedef typename E2::value_type value_type2;
         typedef typename E3::value_type value_type3;
-        typedef typename common_type<value_type1, value_type2>::type value_type_i;
+        typedef typename common_type<value_type1,
+                                     value_type2,
+                                     value_type3>::type value_type_i;
         typedef unbounded_array<value_type_i,
                                 typename alignment::aligned_allocator<value_type_i,
                                                                       BlockSize::align> > array_type_i;
@@ -633,7 +680,9 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         typedef typename E1::value_type value_type1;
         typedef typename E2::value_type value_type2;
         typedef typename E3::value_type value_type3;
-        typedef typename common_type<value_type1, value_type2>::type value_type_i;
+        typedef typename common_type<value_type1,
+                                     value_type2,
+                                     value_type3>::type value_type_i;
         typedef typename value_type_i::value_type value_type_f;
         typedef unbounded_array<value_type_f,
                                 typename alignment::aligned_allocator<value_type_f,
@@ -658,6 +707,5 @@ namespace boost { namespace numeric { namespace ublas { namespace detail {
         gemm_(alpha, e1, e2, beta, e3, std::make_pair(&Ar[0], &Ai[0]),
               std::make_pair(&Br[0], &Bi[0]), bs);
     }
-
 }}}}
 #endif

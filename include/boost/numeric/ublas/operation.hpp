@@ -752,19 +752,6 @@ namespace boost { namespace numeric { namespace ublas {
           \param E1 type of a matrix expression \c A
           \param E2 type of a matrix expression \c X
   */
-    template<class M, class E1, class E2, class B>
-    BOOST_UBLAS_INLINE
-    M &
-    axpy_prod (const matrix_expression<E1> &e1,
-               const matrix_expression<E2> &e2,
-               M &m, bool init, B) {
-        typedef typename M::storage_category storage_category;
-       typedef B block_sizes;
-
-        return axpy_prod(e1, e2, m, full (), storage_category (),
-                        init, block_sizes());
-    }
-
     template<class M, class E1, class E2>
     BOOST_UBLAS_INLINE
     M &
@@ -773,7 +760,8 @@ namespace boost { namespace numeric { namespace ublas {
                M &m, bool init = true) {
         typedef typename M::storage_category storage_category;
         typedef typename detail::prod_block_size<typename common_type<typename E1::value_type,
-                                                                      typename E2::value_type>::type> block_sizes;
+                                                                      typename E2::value_type,
+                                                                      typename M::value_type>::type> block_sizes;
 #ifndef BOOST_UBLAS_LEGACY_PRODUCT
         return axpy_prod(e1, e2, m, full (), storage_category (),
                         init, block_sizes());
@@ -953,7 +941,8 @@ namespace boost { namespace numeric { namespace ublas {
          const matrix_expression<E2> &e2,
         typename E3::value_type beta, matrix_expression<E3> &e3) {
         typedef typename detail::prod_block_size<typename common_type<typename E1::value_type,
-                                                                     typename E2::value_type>::type> block_sizes;
+                                                                      typename E2::value_type,
+                                                                      typename E3::value_type>::type> block_sizes;
        detail::gemm(alpha, e1, e2, beta, e3, block_sizes());
     }
 
