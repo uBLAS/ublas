@@ -1,6 +1,8 @@
 ublas
 =====
 
+**The development now happens in the main boost repository. Go to https://github.com/boostorg/ublas**
+
 The Boost.uBLAS Linear Algebra Library v1.0
 
 - To follow development and test experimental features, you can clone the Github project uBLAS/ublas
